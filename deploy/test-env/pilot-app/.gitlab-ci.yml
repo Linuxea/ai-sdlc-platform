@@ -1,0 +1,25 @@
+# 试点 CI — 引用平台模板(GitLab 测试实例上的 platform/ai-sdlc-platform)
+include:
+  - project: platform/ai-sdlc-platform
+    ref: main
+    file: pipelines/templates/main.yml
+
+variables:
+  LINT_CMD: "pip install --quiet ruff && ruff check src tests"
+  TEST_CMD: "pip install --quiet fastapi httpx pytest && pytest --junitxml=junit.xml"
+  ENABLE_UNIT_TEST: "true"
+  DEPLOY_STRATEGY: "test"          # 测试环境跳过 K8s 蓝绿 job
+
+stages: [lint, test, build, scan, deploy]
+
+# 测试环境的轻量部署 job(占位验证, 供 wf1 门禁D 触发)
+deploy-test:
+  stage: deploy
+  image: alpine:3.20
+  script:
+    - echo "deploy-test ok for $CI_COMMIT_REF_NAME"
+  environment:
+    name: test
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
