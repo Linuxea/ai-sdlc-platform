@@ -1,0 +1,52 @@
+# ============================================================
+# LiteLLM 网关配置
+# 镜像: litellm/litellm-database:v1.102.1 (versions.lock 已锁定)
+# 模型 ID 以 2026-09-24 活体探测 GET /v1/models 为准:
+#   - deepseek-flash     = DeepSeek-V4.1-Flash (text+image, 1M ctx, 384K out)
+#   - deepseek-v4-pro    = DeepSeek-V4-Pro     (text, 1M ctx, 384K out)
+#   effort 参数: low/high/max (默认 high)
+# ============================================================
+
+model_list:
+  # 轻量角色: BA / SM / Release / changelog — 便宜、高吞吐
+  - model_name: deepseek-flash
+    litellm_params:
+      model: deepseek/deepseek-flash
+      api_key: os.environ/DEEPSEEK_API_KEY
+
+  # 开发 agent 主力 (OpenHands)
+  - model_name: deepseek-v4-pro
+    litellm_params:
+      model: deepseek/deepseek-v4-pro
+      api_key: os.environ/DEEPSEEK_API_KEY
+
+  # 架构设计 / QA 对抗审查 — Pro + max effort
+  - model_name: deepseek-v4-pro-max
+    litellm_params:
+      model: deepseek/deepseek-v4-pro
+      api_key: os.environ/DEEPSEEK_API_KEY
+      # DeepSeek effort 参数 (2026-09-24 活体探测确认支持 low/high/max)
+      reasoning_effort: max
+
+  # GLM fallback 槽位 — 启用时取消注释, 并以当时活体探测为准更新 model ID
+  # - model_name: glm-fallback
+  #   litellm_params:
+  #     model: zhipu/glm-5.x  # TBD: 启用时探测
+  #     api_key: os.environ/ZHIPU_API_KEY
+
+router_settings:
+  num_retries: 2
+  timeout: 600                    # agent 长任务
+  allowed_fails: 3
+  # 可用性降级: Pro 故障→Flash 兜底 (质量敏感调用方在 header 中关闭 fallback)
+  fallbacks:
+    - deepseek-v4-pro: ["deepseek-flash"]
+    - deepseek-v4-pro-max: ["deepseek-v4-pro"]
+
+litellm_settings:
+  drop_params: true               # 容忍下游组件(n8n/OpenHands)的冗余参数
+  # success_callback: ["langfuse"]  # M7 启用 (需 LANGFUSE_PUBLIC_KEY/SECRET_KEY)
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/LITELLM_DB_URL

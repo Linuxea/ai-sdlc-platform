@@ -1,0 +1,40 @@
+# LiteLLM 本地冒烟环境 (生产为 K8s Helm, 见 M7)
+# 用法:
+#   1. 在本目录创建 .env (参考根目录 .env.example, 已被 .gitignore 忽略)
+#   2. docker compose up -d --wait
+#   3. 冒烟: ../../scripts/probe_gateway.sh
+#   4. docker compose down -v
+name: litellm-smoke
+
+services:
+  db:
+    image: postgres:16-alpine      # major-scoped 锁定, minor 由巡检工作流跟进
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm   # 仅本地冒烟; 生产走 K8s Secret
+      POSTGRES_DB: litellm
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  gateway:
+    image: litellm/litellm-database:v1.102.1   # versions.lock 锁定
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    env_file: .env
+    environment:
+      LITELLM_DB_URL: postgresql://litellm:litellm@db:5432/litellm
+    ports:
+      - "127.0.0.1:4000:4000"     # 只绑本机
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "/app/.venv/bin/python3 -c 'urllib.request.urlopen(\"http://localhost:4000/health/liveliness\", timeout=3)'"]  # 镜像内无 curl
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 90s           # 首次启动 prisma 迁移较慢

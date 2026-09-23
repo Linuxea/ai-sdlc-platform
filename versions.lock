@@ -10,8 +10,8 @@
 
 | component | version | verified_at | source | notes |
 |---|---|---|---|---|
-| deepseek-api | TBD-M1 | - | https://api-docs.deepseek.com | M1 活体探测 /v1/models 后冻结; 注意 2026-09 模型 ID 变动频繁 |
-| litellm | TBD-M1 | - | https://docs.litellm.ai/release_notes | 2026-09 基准 v1.100.x, M1 时复核 |
+| deepseek-api | deepseek-flash(=V4.1-Flash) + deepseek-v4-pro | 2026-09-24 | https://api.deepseek.com/models 活体探测 | 1M ctx/384K out; effort low/high/max; flash 支持图像; 旧 ID 已退役 |
+| litellm | v1.102.1 (litellm/litellm-database) | 2026-09-24 | https://github.com/BerriAI/litellm/releases/tag/v1.102.1 + Docker Hub tag 验证 | 冒烟通过: 3 路由(flash/pro/pro-max), reasoning_effort 透传验证 |
 | n8n | TBD-M4 | - | https://docs.n8n.io/changelog/release-notes | 2026-09 基准 2.40.x, M4 时复核 |
 | gitlab-ce | TBD-M7 | - | https://docs.gitlab.com/charts | 19.x 注意: 内置 PG/Redis/MinIO 已移除, 需外置 |
 | openhands-agent-canvas | TBD-M7 | - | https://docs.openhands.dev/openhands/usage/agent-canvas/release-notes | 2026-09 基准 1.22.x, 迭代极快(6 周 9 minor) |
