@@ -5,9 +5,9 @@ n8n 2.x 可导入的工作流 JSON（骨架完整：拓扑+参数+表达式；�
 | 文件 | 工作流 | 状态 |
 |---|---|---|
 | [wf1-sdlc-main.json](wf1-sdlc-main.json) | ① SDLC 主流程（需求→设计→任务→开发→测试→发布，4 道门禁） | M4 ✅ 骨架 |
-| wf2-ops-loop.json | ② 运维回环（告警→诊断→incident.md→回流①） | M6 |
-| wf3-helpers.json | ③ 辅助流（成本日报/changelog/谷时批量） | M6 |
-| wf4-freshness.json | ④ 新鲜度巡检（周检 versions.lock→升级 intent） | M6 |
+| [wf2-ops-loop.json](wf2-ops-loop.json) | ② 运维回环（告警→诊断→incident.md→人工确认→回流①） | M6 ✅ 骨架 |
+| [wf3-helpers.json](wf3-helpers.json) | ③ 辅助流（每日成本日报 + tag changelog） | M6 ✅ 骨架 |
+| [wf4-freshness.json](wf4-freshness.json) | ④ 新鲜度巡检（周六谷时逐组件核查→升级 intent） | M6 ✅ 骨架 |
 
 ## 版本化约定
 
