@@ -16,4 +16,6 @@
 | gitlab-ce | TBD-M7 | - | https://docs.gitlab.com/charts | 19.x 注意: 内置 PG/Redis/MinIO 已移除, 需外置 |
 | openhands-agent-canvas | TBD-M7 | - | https://docs.openhands.dev/openhands/usage/agent-canvas/release-notes | 2026-09 基准 1.22.x, 迭代极快(6 周 9 minor) |
 | langfuse | TBD-M7 | - | https://github.com/langfuse/langfuse/releases | v3 六服务架构, 需 ClickHouse + S3 |
-| mkdocs-material | TBD-M3 | - | https://squidfunk.github.io/mkdocs-material/changelog/ | M3 时复核 |
+| mkdocs-material | 9.7.7 | 2026-09-24 | https://github.com/squidfunk/mkdocs-material/releases | pages job pip 锁定安装 |
+| gitleaks | v8.30.1 | 2026-09-24 | https://github.com/gitleaks/gitleaks/releases | CI scan 镜像 zricethezav/gitleaks:v8.30.1 |
+| trivy | v0.74.0 | 2026-09-24 | https://github.com/aquasecurity/trivy/releases | CI scan 镜像 aquasec/trivy:v0.74.0 |
