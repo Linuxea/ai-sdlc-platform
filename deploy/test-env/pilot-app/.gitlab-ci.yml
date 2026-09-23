@@ -5,8 +5,9 @@ include:
     file: pipelines/templates/main.yml
 
 variables:
+  PIP_INDEX_URL: "https://pypi.tuna.tsinghua.edu.cn/simple"
   LINT_CMD: "pip install --quiet ruff && ruff check src tests"
-  TEST_CMD: "pip install --quiet fastapi httpx pytest && pytest --junitxml=junit.xml"
+  TEST_CMD: "pip install --quiet fastapi httpx pytest && PYTHONPATH=src pytest --junitxml=junit.xml"
   ENABLE_UNIT_TEST: "true"
   DEPLOY_STRATEGY: "test"          # 测试环境跳过 K8s 蓝绿 job
 

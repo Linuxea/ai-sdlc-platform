@@ -14,11 +14,11 @@ echo "[1/7] 等待 GitLab 就绪(首次 3-5 分钟)..."
 until curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$GL/users/sign_in" | grep -q 200; do sleep 10; done
 echo "  就绪"
 
-echo "[2/7] 生成 root PAT..."
+echo "[2/7] 生成 root PAT(90 天有效, 与新鲜度纪律对齐)..."
 TOKEN="glpat-$(openssl rand -hex 20)"
 docker exec "$GLAB_CONTAINER" gitlab-rails runner "
   u = User.find_by_username('root')
-  t = u.personal_access_tokens.new(name: 'platform-test', scopes: [:api], expires_at: nil)
+  t = u.personal_access_tokens.new(name: 'platform-test', scopes: [:api], expires_at: 90.days.from_now)
   t.set_token('$TOKEN')
   t.save!
 " >/dev/null 2>&1 || { echo "  rails 生成失败 — 手动在 UI 创建 PAT 后写入 $ENV_FILE"; exit 1; }
@@ -43,29 +43,33 @@ git -C "$PILOT" remote add origin "http://root:$TOKEN@10.0.0.5:8090/platform/pil
 git -C "$PILOT" push -q origin main
 echo "  已推送"
 
-echo "[5/7] 配置 webhook(n8n 回调)..."
-for hook in "pipeline-events" "merge-request-events"; do
-  api -X POST "$GL/api/v4/projects/platform%2Fpilot-app/hooks" \
-    -d url="http://10.0.0.1:5678/webhook/gitlab-pipeline-done" \
-    -d "enable_ssl_verification=false" -d "$hook=true" | jq -r '.id // .message' | sed "s/^/  $hook: /"
-done
-api -X POST "$GL/api/v4/projects/platform%2Fpilot-app/hooks" \
-  -d url="http://10.0.0.1:5678/webhook/gitlab-mr-merged" \
-  -d "enable_ssl_verification=false" -d "merge_request_events=true" | jq -r '.id // .message' | sed 's/^/  mr-merged: /'
+echo "[5/7] 放行内网 webhook 并配置..."
+# GitLab 19 默认禁止 webhook 打内网地址(Outbound 安全), 测试环境需显式放行
+api -X PUT "$GL/api/v4/application/settings?allow_local_requests_from_web_hooks_and_services=true" \
+  | jq -r 'if .message then .message else "  local webhook 已放行" end'
+# 注意: 事件字段是 merge_requests_events(复数); 用 JSON body 避免 form 编码歧义
+api -X POST "$GL/api/v4/projects/platform%2Fpilot-app/hooks" -H "Content-Type: application/json" \
+  -d '{"url":"http://10.0.0.1:5678/webhook/gitlab-pipeline-done","pipeline_events":true,"push_events":false,"enable_ssl_verification":false}' \
+  | jq -r '"  pipeline-hook: " + (.id // .error // .message | tostring)'
+api -X POST "$GL/api/v4/projects/platform%2Fpilot-app/hooks" -H "Content-Type: application/json" \
+  -d '{"url":"http://10.0.0.1:5678/webhook/gitlab-mr-merged","merge_requests_events":true,"push_events":false,"enable_ssl_verification":false}' \
+  | jq -r '"  mr-merged-hook: " + (.id // .error // .message | tostring)'
 
-echo "[6/7] 注册 gitlab-runner..."
-RT=$(api "$GL/api/v4/projects/platform%2Fpilot-app" | jq -r '.runners_token // empty')
-if [ -n "$RT" ]; then
+echo "[6/7] 注册 gitlab-runner(新 API 流程: 先建 runner 拿 token)..."
+RUNNER_TOKEN=$(api -X POST "$GL/api/v4/user/runners" -H "Content-Type: application/json" \
+  -d '{"runner_type":"project_type","project_id":2,"description":"pilot-runner","run_untagged":true}' \
+  | jq -r '.token // empty')
+if [ -n "$RUNNER_TOKEN" ]; then
   docker rm -f pilot-runner 2>/dev/null || true
   docker run -d --name pilot-runner --restart unless-stopped \
     -v pilot-runner-config:/etc/gitlab-runner -v /var/run/docker.sock:/var/run/docker.sock \
     gitlab/gitlab-runner:v19.4.0 >/dev/null
   docker exec pilot-runner gitlab-runner register --non-interactive \
-    --url "$GL" --token "$RT" --executor docker \
-    --docker-image python:3.12-slim --docker-pulls-disabled=false 2>&1 | tail -1
+    --url "$GL" --token "$RUNNER_TOKEN" --executor docker \
+    --docker-image python:3.12-slim 2>&1 | tail -1
   echo "  runner 已注册"
 else
-  echo "  runners_token 不可读(API 行为变更?) — 手动注册: docker exec ... gitlab-runner register (token 见项目设置)"
+  echo "  runner API 创建失败 — 手动注册(项目设置→Runners→new project runner)"
 fi
 
 echo "[7/7] 完成 — .env 已含 GITLAB_TOKEN, 重启 n8n 使其生效:"
