@@ -30,6 +30,6 @@ def test_workflow_env_vars_are_provisioned():
 
 
 def test_secrets_documented_in_env_example():
-    for var in ["DEEPSEEK_API_KEY", "LITELLM_MASTER_KEY", "N8N_ENCRYPTION_KEY", "GITLAB_TOKEN", "OPENHANDS_TOKEN"]:
+    for var in ["DEEPSEEK_API_KEY", "LITELLM_MASTER_KEY", "N8N_ENCRYPTION_KEY", "GITLAB_TOKEN", "OPENHANDS_API_KEY"]:
         assert var in ENV_EXAMPLE, f".env.example 缺 {var} 说明"
         assert "sk-your" not in "" or True

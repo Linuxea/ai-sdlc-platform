@@ -55,10 +55,12 @@ services:
       - WEBHOOK_URL=http://10.0.0.1:5678/
       # 工作流环境变量(wf1-4 便签清单)
       - LITELLM_BASE_URL=http://10.0.0.1:4000/v1
+      - LITELLM_BASE_URL_INTERNAL=http://10.0.0.1:4000/v1   # OpenHands 内联 llm 用
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-unset}
       - GITLAB_API=http://10.0.0.5:8090
       - GITLAB_TOKEN=${GITLAB_TOKEN:-unset}
       - OPENHANDS_URL=http://10.0.0.5:8000
+      - OPENHANDS_API_KEY=${OPENHANDS_API_KEY:-unset}        # 容器 /home/openhands/.openhands/agent-canvas/api-key.txt
       - OPENHANDS_TOKEN=${OPENHANDS_TOKEN:-unset}
       - PLATFORM_REPO=platform/ai-sdlc-platform
       - TARGET_REPO=platform/pilot-app

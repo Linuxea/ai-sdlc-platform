@@ -357,33 +357,21 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-Session-Token",
-              "value": "={{ $env.OPENHANDS_TOKEN }}"
+              "name": "X-Session-API-Key",
+              "value": "={{ $env.OPENHANDS_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={ \"repo\": \"{{ $('初始化上下文').item.json.repo }}\", \"task_file\": \"docs/tasks/TASKS-{{ $('初始化上下文').item.json.slug }}.md\", \"callback_url\": \"{{ $env.N8N_PUBLIC_URL }}/webhook/openhands-done/{{ $('初始化上下文').item.json.runId }}\" }",
+        "jsonBody": "={ \"initial_message\": { \"content\": [{ \"text\": \"你是开发 agent。任务清单: docs/tasks/TASKS-$('初始化上下文').item.json.slug.md (仓库 $('初始化上下文').item.json.repo)。步骤: 1) git clone http://root:{{ $env.GITLAB_TOKEN }}@10.0.0.5:8090/$('初始化上下文').item.json.repo.git 2) 逐任务 TDD 实现(先写测试) 3) lint+测试全绿 4) commit(带 Agent: dev trailer) push 到 task/$('初始化上下文').item.json.slug 分支。遵守 docs/constitution.md 全部铁律。\" }] }, \"workspace\": { \"kind\": \"LocalWorkspace\", \"working_dir\": \"workspace/dev\" }, \"agent\": { \"kind\": \"Agent\", \"llm\": { \"model\": \"openai/deepseek-v4-pro\", \"api_key\": \"{{ $env.LITELLM_MASTER_KEY }}\", \"base_url\": \"{{ $env.LITELLM_BASE_URL_INTERNAL }}\" }, \"tools\": [{ \"name\": \"terminal\", \"params\": {} }] } }",
         "options": {}
       },
-      "notesInFlow": "请求体字段以部署的 OpenHands API 文档为准(导入后核对)"
-    },
-    {
-      "id": "n16",
-      "name": "OpenHands · 完成回调",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        1240,
-        300
-      ],
-      "webhookId": "openhands-done",
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "openhands-done",
-        "responseMode": "onReceived"
-      }
+      "notesInFlow": "实测契约(2026-09-24): X-Session-API-Key(容器 api-key.txt); llm 须内联 model=openai/<route>+base_url"
     },
     {
       "id": "n17",
@@ -720,6 +708,76 @@
         "height": 300,
         "width": 400
       }
+    },
+    {
+      "id": "n16",
+      "name": "OpenHands · 完成轮询",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1240,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.OPENHANDS_URL }}/api/conversations/{{ $('OpenHands · 创建开发任务').item.json.conversation_id }}/events/search?limit=200",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Session-API-Key",
+              "value": "={{ $env.OPENHANDS_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "notesInFlow": "MVP 单次轮询; 生产化改 OpenHands automation 回调"
+    },
+    {
+      "id": "n16b",
+      "name": "开发完成?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1460,
+        240
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ JSON.stringify($json.items || []).includes('\"value\":\"finished\"') || JSON.stringify($json.items || []).includes('\"value\": \"finished\"') }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "n16w",
+      "name": "等待 90s 重试",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1460,
+        480
+      ],
+      "parameters": {
+        "amount": 90,
+        "unit": "seconds"
+      }
     }
   ],
   "connections": {
@@ -903,18 +961,7 @@
       "main": [
         [
           {
-            "node": "OpenHands · 完成回调",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "OpenHands · 完成回调": {
-      "main": [
-        [
-          {
-            "node": "GitLab · 触发流水线",
+            "node": "OpenHands · 完成轮询",
             "type": "main",
             "index": 0
           }
@@ -1043,6 +1090,46 @@
         [
           {
             "node": "完成 · 记录归档",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenHands · 完成轮询": {
+      "main": [
+        [
+          {
+            "node": "开发完成?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "开发完成?": {
+      "main": [
+        [
+          {
+            "node": "GitLab · 触发流水线",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "等待 90s 重试",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "等待 90s 重试": {
+      "main": [
+        [
+          {
+            "node": "OpenHands · 完成轮询",
             "type": "main",
             "index": 0
           }
