@@ -1,0 +1,19 @@
+# versions.lock — 组件版本锁定清单
+#
+# 铁律:
+#   1. 所有部署配置(deploy/ 下的 compose 与 Helm values)只能引用本文件中的版本
+#   2. 禁止使用 latest / 未锁定 tag
+#   3. 每条记录必须包含: 验证日期(verified_at) + 来源 URL(source)
+#   4. 超过 90 天未复核的记录, 由 n8n 工作流④(新鲜度巡检)自动标记 STALE 并生成升级 intent
+#
+# | component | version | verified_at | source | notes |
+
+| component | version | verified_at | source | notes |
+|---|---|---|---|---|
+| deepseek-api | TBD-M1 | - | https://api-docs.deepseek.com | M1 活体探测 /v1/models 后冻结; 注意 2026-09 模型 ID 变动频繁 |
+| litellm | TBD-M1 | - | https://docs.litellm.ai/release_notes | 2026-09 基准 v1.100.x, M1 时复核 |
+| n8n | TBD-M4 | - | https://docs.n8n.io/changelog/release-notes | 2026-09 基准 2.40.x, M4 时复核 |
+| gitlab-ce | TBD-M7 | - | https://docs.gitlab.com/charts | 19.x 注意: 内置 PG/Redis/MinIO 已移除, 需外置 |
+| openhands-agent-canvas | TBD-M7 | - | https://docs.openhands.dev/openhands/usage/agent-canvas/release-notes | 2026-09 基准 1.22.x, 迭代极快(6 周 9 minor) |
+| langfuse | TBD-M7 | - | https://github.com/langfuse/langfuse/releases | v3 六服务架构, 需 ClickHouse + S3 |
+| mkdocs-material | TBD-M3 | - | https://squidfunk.github.io/mkdocs-material/changelog/ | M3 时复核 |
