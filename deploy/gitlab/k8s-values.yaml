@@ -1,0 +1,53 @@
+# ============================================================
+# GitLab CE 执行面 — Helm values
+# Chart: gitlab/gitlab 10.4.1 (app v19.4.1, 2026-09-23 发布, versions.lock)
+# ⚠ GitLab 19.x 重大变更(2026-09-24 核实):
+#   1) 内置 PostgreSQL/Redis/MinIO 已从 chart 移除 → 必须外置(下方指向共享实例)
+#   2) NGINX Ingress EOL → 默认 Gateway API/Envoy; 20.0 前可显式保留 NGINX
+# ============================================================
+
+global:
+  edition: ce                        # Community Edition (MIT Expat)
+  hosts:
+    domain: example.com
+    https: true
+  ingress:
+    configureCertmanager: true
+    class: env                       # 与 LiteLLM/n8n 同一 Gateway API 体系
+  psql:
+    host: postgres-shared.ai-sdlc.svc.cluster.local
+    database: gitlabhq_production
+    username: gitlab
+    password:
+      useSecret: true
+      secret: gitlab-pg
+      key: password
+  redis:
+    host: redis-shared.ai-sdlc.svc.cluster.local
+    password:
+      enabled: true
+      secret: redis-shared
+      key: password
+  minio:
+    enabled: false                   # 对象存储外置(与 Langfuse 共享 MinIO)
+  appConfig:
+    object_store:
+      enabled: true                  # 具体连接参数按 chart 文档配置指向共享 MinIO
+  runner:
+    enabled: true                    # CI 执行面(workflow ①的 Pipeline 由它跑)
+
+certmanager:
+  install: true
+
+nginx-ingress:
+  enabled: false                     # 采用默认 Envoy Gateway; 若集群尚未就绪可改 true(仅限 <20.0)
+
+registry:
+  enabled: true                      # 制品库
+
+gitlab:
+  gitaly:
+    persistence: { size: 200Gi, storageClass: "" }   # 按集群 StorageClass 填
+
+# 资源: GitLab 全家桶较重, 建议 ≥4C8G 独占节点池; 小规模可先 Omnibus Docker 单机(见 runbook 备选)
+# 部署后: 关闭注册 + 配置 root 密码 + 创建 platform group + PAT(写入 n8n 的 GITLAB_TOKEN secret)

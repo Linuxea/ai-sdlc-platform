@@ -1,0 +1,35 @@
+# ============================================================
+# LiteLLM 网关 — Helm values
+# Chart: berriai/litellm-helm (repo: https://berriai.github.io/litellm-helm-charts)
+# 版本: 镜像 v1.102.1 (versions.lock 2026-09-24 冒烟验证)
+# 部署顺序: 共享 PG/Redis 之后, n8n/OpenHands 之前
+# 注意: values 字段名以 chart README 为准(部署时核对), 此处为结构化模板
+# ============================================================
+
+image:
+  tag: "v1.102.1"            # versions.lock
+
+# 模型路由配置: 复用 deploy/litellm/config.yaml(单一事实源)
+# 部署时将其创建为 ConfigMap 后引用:
+proxyConfiguration:
+  configMapName: litellm-config   # kubectl create configmap litellm-config --from-file=config.yaml=./config.yaml
+
+masterSecret:
+  secretName: litellm-secrets     # 含 masterKey
+
+dbConnection:
+  secretName: litellm-db          # 含 DATABASE_URL (共享 PostgreSQL, 独立库 litellm)
+
+resources:
+  requests: { cpu: 200m, memory: 512Mi }
+  limits: { cpu: "2", memory: 2Gi }
+
+# agent 长任务, 网关超时需与 config.yaml router_settings.timeout(600s)匹配
+ingress:
+  enabled: true
+  className: env                 # GitLab 19.x 同一 Gateway API 体系(见 gitlab/k8s-values.yaml)
+  hosts: [{ host: litellm.example.com, paths: [{ path: / }] }]
+  tls: [{ secretName: litellm-tls, hosts: [litellm.example.com] }]
+
+# 验证(部署后): kubectl exec deploy/litellm -- curl -s localhost:4000/health/liveliness
+#               外部: scripts/probe_gateway.sh https://litellm.example.com

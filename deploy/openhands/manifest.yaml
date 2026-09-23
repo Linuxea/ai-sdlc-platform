@@ -1,0 +1,46 @@
+# ============================================================
+# OpenHands (Agent Canvas) — 开发执行 agent
+# 无官方 Helm chart → 直接 manifest。镜像 ghcr.io/openhands/agent-canvas:1.22.0
+# (versions.lock 2026-09-24; 官方 6 周 9 minor 高频迭代, 升级走 wf4)
+# ⚠ 沙箱模式: 以部署当时官方文档为准(容器内 runtime / K8s pod 沙箱二选一)
+# ============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: openhands
+  namespace: ai-sdlc
+spec:
+  selector: { app: openhands }
+  ports: [{ port: 8000, targetPort: 8000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openhands
+  namespace: ai-sdlc
+spec:
+  replicas: 1                      # 按并发任务数扩; 每开发任务建议独立沙箱
+  selector: { matchLabels: { app: openhands } }
+  template:
+    metadata: { labels: { app: openhands } }
+    spec:
+      containers:
+        - name: agent-canvas
+          image: ghcr.io/openhands/agent-canvas:1.22.0
+          ports: [{ containerPort: 8000 }]
+          env:
+            - name: LLM_BASE_URL
+              value: "https://litellm.example.com/v1"    # 经网关, 不直连厂商
+            - name: LLM_API_KEY
+              valueFrom: { secretKeyRef: { name: litellm-virtual-key-openhands, key: key } }  # 网关虚拟 key(最小权限)
+            - name: LLM_MODEL
+              value: "deepseek-v4-pro"                   # 开发主力路由
+          resources:
+            requests: { cpu: 500m, memory: 1Gi }
+            limits: { cpu: "4", memory: 8Gi }
+          volumeMounts: [{ name: workspace, mountPath: /opt/workspace_root }]
+          securityContext:
+            runAsNonRoot: true       # 沙箱基线; 具体沙箱方案部署时按官方文档强化
+      volumes:
+        - name: workspace
+          persistentVolumeClaim: { claimName: openhands-workspace }   # 预先创建 PVC

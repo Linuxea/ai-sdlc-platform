@@ -80,13 +80,15 @@ versions.lock            组件版本锁定清单(含验证日期与来源)
 | # | 里程碑 | 状态 |
 |---|---|---|
 | M0 | 仓库 bootstrap | ✅ |
-| M1 | LiteLLM 网关（DeepSeek 活体验证 + 冒烟） | ⏳ |
-| M2 | 角色提示词（BA/架构/SM/QA/Release） | |
-| M3 | 项目脚手架模板（docs-as-code） | |
-| M4 | n8n 工作流① 主流程编排 | |
-| M5 | GitLab CI 模板 + 蓝绿部署 | |
-| M6 | 工作流②③④（回环/辅助/巡检） | |
-| M7 | K8s Helm values + 部署 runbook | |
+| M1 | LiteLLM 网关（DeepSeek 活体验证 + 三路由冒烟 PASS） | ✅ |
+| M2 | 角色提示词（BA/架构/SM/QA/Release） | ✅ |
+| M3 | 项目脚手架模板（constitution + docs-as-code） | ✅ |
+| M4 | n8n 工作流① 主流程编排（31 节点拓扑校验） | ✅ |
+| M5 | GitLab CI 模板 + 蓝绿部署 | ✅ |
+| M6 | 工作流②③④（回环/辅助/巡检） | ✅ |
+| M7 | K8s Helm values + 部署 runbook | ✅ |
+
+> 全部里程碑完成。下一步：集群就绪后按 `docs/runbooks/deploy-k8s.md` 顺序落地，选 1 个试点项目实跑 wf1。
 
 ## 核心原则（写进 agent 宪法）
 

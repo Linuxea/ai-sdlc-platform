@@ -1,0 +1,51 @@
+# ============================================================
+# n8n 编排控制面 — Helm values (队列模式: main + workers + Redis)
+# Chart: n8n-io/n8n-helm-chart (社区) — 部署时核对字段名
+# 版本: 2.40.5 (versions.lock 2026-09-24 Docker Hub 验证)
+# ============================================================
+
+image:
+  tag: "2.40.5"               # 注意: n8n 迭代快, 升级一律走 versions.lock + wf4 巡检流程
+
+# 队列模式(公司级并发): main 处理 webhook/表单, worker 跑执行
+main:
+  replicas: 2
+  webhook:
+    url: https://n8n.example.com/   # N8N_PUBLIC_URL, wf1/wf2 回调依赖
+worker:
+  replicas: 3
+redis:
+  enabled: true               # 队列后端
+
+n8n:
+  encryptionKeySecretName: n8n-encryption   # N8N_ENCRYPTION_KEY(凭据加密, 丢失=全部凭据不可用, 备份!)
+  # 环境变量(凭据之外的配置): 与 wf1 便签清单一致
+  environment:
+    - name: LITELLM_BASE_URL
+      value: "https://litellm.example.com/v1"
+    - name: GITLAB_TOKEN
+      valueFrom: { secretKeyRef: { name: gitlab-platform-token, key: token } }
+    - name: OPENHANDS_URL
+      value: "http://openhands.ai-sdlc.svc.cluster.local:8000"
+    - name: OPENHANDS_TOKEN
+      valueFrom: { secretKeyRef: { name: openhands-token, key: token } }
+    - name: N8N_PUBLIC_URL
+      value: "https://n8n.example.com/"
+    - name: EXECUTIONS_DATA_PRUNE
+      value: "true"           # 执行历史保留策略(审计需求 → 设长保留期)
+    - name: EXECUTIONS_DATA_MAX_AGE
+      value: "365"
+
+persistence:
+  enabled: true               # .n8n 目录(PVC)
+
+ingress:
+  enabled: true
+  className: env
+  hosts: [{ host: n8n.example.com }]
+
+resources:
+  worker: { requests: { cpu: 500m, memory: 1Gi }, limits: { cpu: "2", memory: 4Gi } }
+
+# 部署后: 导入 n8n-workflows/*.json(工作流①-④), 按各 .md 配置清单接凭据
+# 安全注意: 自托管 n8n 的补丁由本平台负责(历史 Ni8mare CVE) → wf4 巡检已覆盖 n8n 版本跟踪

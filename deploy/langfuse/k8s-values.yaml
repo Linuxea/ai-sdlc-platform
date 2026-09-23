@@ -1,0 +1,36 @@
+# ============================================================
+# Langfuse LLM 可观测 — Helm values
+# Chart: langfuse/langfuse, 版本 v4.43.0 (2026-09-23 发布, versions.lock)
+# ⚠ v3→v4 架构可能有调整: v3 为 web+worker+PG+ClickHouse+Redis+S3 六服务;
+#   部署时以 v4 官方 helm 文档核对组件清单与新增依赖
+# ============================================================
+
+langfuse:
+  image:
+    tag: "4.43.0"                  # versions.lock
+  web: { replicas: 2 }
+  worker: { replicas: 2 }
+  nextauth:
+    secretSecretName: langfuse-nextauth
+  # v3 起 trace 存 ClickHouse, 事件文件存 S3 —— v4 核对后如结构不变:
+  clickhouse:
+    external: true
+    url: "clickhouse.ai-sdlc.svc.cluster.local:9000"
+    authSecretName: langfuse-clickhouse
+  postgres:
+    external: true
+    urlSecretName: langfuse-pg     # 指向共享 PG 独立库 langfuse
+  redis:
+    external: true
+    urlSecretName: langfuse-redis
+  s3:
+    eventUpload:
+      bucketSecretName: langfuse-s3   # 指向共享 MinIO 的 bucket
+
+ingress:
+  enabled: true
+  className: env
+  hosts: [{ host: langfuse.example.com }]
+
+# 联动: LiteLLM config.yaml 打开 success_callback: ["langfuse"] 后,
+#       每次模型调用的 trace/token 成本自动入库(工作流执行 ID 关联)
