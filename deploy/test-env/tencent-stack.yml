@@ -1,0 +1,82 @@
+# ============================================================
+# 测试环境 · tencent 栈（常驻控制面）— 10.0.0.1
+# 服务: postgres + litellm + n8n | 已有 Harbor(80/8080/1514) 不动
+# 部署: deploy/test-env/bootstrap-tencent.sh 一键完成(勿手动 up)
+# 版本: 全部按根目录 versions.lock
+# ============================================================
+name: ai-sdlc-test
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm           # 测试环境; 密钥类走 .env
+      POSTGRES_DB: litellm
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+    mem_limit: 400m
+
+  litellm:
+    image: litellm/litellm-database:v1.102.1
+    restart: unless-stopped
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro   # 由 bootstrap 从 deploy/litellm/config.yaml 同步
+    env_file: .env
+    environment:
+      LITELLM_DB_URL: postgresql://litellm:litellm@db:5432/litellm
+    ports:
+      - "0.0.0.0:4000:4000"                # 0.0.0.0: WG 内 local 主机需访问
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request;urllib.request.urlopen(\"http://localhost:4000/health/liveliness\",timeout=3)'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+    mem_limit: 700m
+
+  n8n:
+    image: n8nio/n8n:2.40.5
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # n8n 基础
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_HOST=10.0.0.1
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://10.0.0.1:5678/
+      # 工作流环境变量(wf1-4 便签清单)
+      - LITELLM_BASE_URL=http://10.0.0.1:4000/v1
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-unset}
+      - GITLAB_API=http://10.0.0.5:8090
+      - GITLAB_TOKEN=${GITLAB_TOKEN:-unset}
+      - OPENHANDS_URL=http://10.0.0.5:8000
+      - OPENHANDS_TOKEN=${OPENHANDS_TOKEN:-unset}
+      - PLATFORM_REPO=platform/ai-sdlc-platform
+      - TARGET_REPO=platform/pilot-app
+      - N8N_PUBLIC_URL=http://10.0.0.1:5678
+      - N8N_METRICS=false
+      # 执行历史: 测试期全保留便于审计, 上限防磁盘爆
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=30
+      # 沙箱任务级超时
+      - EXECUTIONS_TIMEOUT=3600
+      # TZ
+      - GENERIC_TIMEZONE=Asia/Shanghai
+    ports:
+      - "0.0.0.0:5678:5678"
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ./workflows:/import:ro              # bootstrap 导入用
+    mem_limit: 800m
+
+volumes:
+  n8n-data:

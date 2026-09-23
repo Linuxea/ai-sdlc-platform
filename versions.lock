@@ -6,16 +6,20 @@
 #   3. 每条记录必须包含: 验证日期(verified_at) + 来源 URL(source)
 #   4. 超过 90 天未复核的记录, 由 n8n 工作流④(新鲜度巡检)自动标记 STALE 并生成升级 intent
 #
-# | component | version | verified_at | source | notes |
+# version 列约定: 与镜像 tag 完全一致(tests/test_versions_lock.py 契约校验);
+#                 major-scoped 例外在 notes 标注
 
 | component | version | verified_at | source | notes |
 |---|---|---|---|---|
 | deepseek-api | deepseek-flash(=V4.1-Flash) + deepseek-v4-pro | 2026-09-24 | https://api.deepseek.com/models 活体探测 | 1M ctx/384K out; effort low/high/max; flash 支持图像; 旧 ID 已退役 |
-| litellm | v1.102.1 (litellm/litellm-database) | 2026-09-24 | https://github.com/BerriAI/litellm/releases/tag/v1.102.1 + Docker Hub tag 验证 | 冒烟通过: 3 路由(flash/pro/pro-max), reasoning_effort 透传验证 |
-| n8n | 2.40.5 (n8nio/n8n) | 2026-09-24 | https://hub.docker.com/v2/repositories/n8nio/n8n/tags?name=2.40 | 队列模式部署; 补丁责任在自托管侧(wf4 跟踪) |
-| gitlab-ce | chart 10.4.1 / app v19.4.1 | 2026-09-24 | https://charts.gitlab.io/index.yaml | 19.x: 内置 PG/Redis/MinIO 已移除, Gateway API 默认 |
-| openhands-agent-canvas | 1.22.0 (ghcr.io/openhands/agent-canvas) | 2026-09-24 | https://docs.openhands.dev/openhands/usage/agent-canvas/release-notes/v1.22.0 | 高频迭代(6周9minor); 沙箱方案部署时按当日文档确认 |
-| langfuse | v4.43.0 | 2026-09-24 | https://github.com/langfuse/langfuse/releases | v3→v4 架构核对后部署(ClickHouse/S3 依赖确认) |
+| litellm | v1.102.1 | 2026-09-24 | https://github.com/BerriAI/litellm/releases/tag/v1.102.1 | 镜像 litellm/litellm-database:v1.102.1, 冒烟三路由 PASS |
+| n8n | 2.40.5 | 2026-09-24 | https://hub.docker.com/v2/repositories/n8nio/n8n/tags?name=2.40.5 | 镜像 n8nio/n8n:2.40.5; 补丁责任在自托管侧(wf4 跟踪) |
+| gitlab-ce | 19.4.1-ce.0 | 2026-09-24 | 腾讯镜像源 manifest 200(19.4.1-ce.1 为 404 反向印证) | chart 10.4.1/app v19.4.1 对应 Omnibus tag; 19.x: 内置 PG/Redis/MinIO 已移除 |
+| openhands-agent-canvas | 1.22.0 | 2026-09-24 | https://docs.openhands.dev/openhands/usage/agent-canvas/release-notes/v1.22.0 | 镜像 ghcr.io/openhands/agent-canvas:1.22.0; 高频迭代; 沙箱方案部署时按当日文档确认 |
+| langfuse | v4.43.0 | 2026-09-24 | https://github.com/langfuse/langfuse/releases | v3→v4 架构核对后部署 |
 | mkdocs-material | 9.7.7 | 2026-09-24 | https://github.com/squidfunk/mkdocs-material/releases | pages job pip 锁定安装 |
 | gitleaks | v8.30.1 | 2026-09-24 | https://github.com/gitleaks/gitleaks/releases | CI scan 镜像 zricethezav/gitleaks:v8.30.1 |
 | trivy | v0.74.0 | 2026-09-24 | https://github.com/aquasecurity/trivy/releases | CI scan 镜像 aquasec/trivy:v0.74.0 |
+| postgres | 16-alpine | 2026-09-24 | https://hub.docker.com/_/postgres | major-scoped: minor 由 wf4 巡检跟进 |
+| python | 3.12-slim | 2026-09-24 | https://hub.docker.com/_/python | major-scoped: CI 模板基础镜像 |
+| alpine | 3.20 | 2026-09-24 | https://hub.docker.com/_/alpine | major-scoped: CI 模板基础镜像 |

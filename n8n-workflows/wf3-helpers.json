@@ -1,4 +1,5 @@
 {
+  "id": "783b4a45-e2c8-4b32-8a6d-3f25b53ebfe8",
   "name": "wf3-helpers",
   "nodes": [
     {
@@ -6,20 +7,42 @@
       "name": "每日 08:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [-800, 300],
-      "parameters": { "rule": { "interval": [ { "field": "cronExpression", "expression": "0 8 * * *" } ] } }
+      "position": [
+        -800,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      }
     },
     {
       "id": "w3n2",
       "name": "LiteLLM · 查询用量",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-580, 300],
+      "position": [
+        -580,
+        300
+      ],
       "parameters": {
         "method": "GET",
         "url": "={{ $env.LITELLM_BASE_URL.replace(/\\/$/, '') }}/spend/logs?start_date={{ $now.minus(1,'day').toFormat('yyyy-MM-dd') }}",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.LITELLM_MASTER_KEY }}" }] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.LITELLM_MASTER_KEY }}"
+            }
+          ]
+        },
         "options": {}
       },
       "notesInFlow": "spend API 字段以部署版 LiteLLM 文档为准"
@@ -29,10 +52,22 @@
       "name": "成本日报汇总",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [-360, 300],
+      "position": [
+        -360,
+        300
+      ],
       "parameters": {
         "mode": "manual",
-        "assignments": { "assignments": [ { "id": "a1", "name": "report", "type": "string", "value": "=={{ $json.data ? ('总花费: ' + ($json.data|map(.total_cost|tonumber)|add // 0)|tostring + ' | 请求数: ' + ($json.data|length|tostring)) : '无数据' }}" } ] }
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "report",
+              "type": "string",
+              "value": "=={{ $json.data ? ('总花费: ' + ($json.data|map(.total_cost|tonumber)|add // 0)|tostring + ' | 请求数: ' + ($json.data|length|tostring)) : '无数据' }}"
+            }
+          ]
+        }
       },
       "notesInFlow": "表达式简化, 导入后按 spend 响应结构微调"
     },
@@ -41,16 +76,26 @@
       "name": "tag 事件入口",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-800, 620],
+      "position": [
+        -800,
+        620
+      ],
       "webhookId": "gitlab-tag-event",
-      "parameters": { "httpMethod": "POST", "path": "gitlab-tag-event", "responseMode": "onReceived" }
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gitlab-tag-event",
+        "responseMode": "onReceived"
+      }
     },
     {
       "id": "w3n5",
       "name": "changelog 生成",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [-580, 620],
+      "position": [
+        -580,
+        620
+      ],
       "parameters": {
         "promptType": "define",
         "text": "=新 tag: {{ $json.body.ref }}\n仓库: {{ $env.TARGET_REPO }}\n\n按 Keep a Changelog 格式输出 CHANGELOG.md 增量段落(Added/Changed/Fixed/Removed + Breaking 置顶)。仅输出增量。",
@@ -64,20 +109,38 @@
       "name": "Flash 模型",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
-      "position": [-580, 840],
-      "parameters": { "model": "deepseek-flash", "options": { "baseURL": "={{ $env.LITELLM_BASE_URL }}" } }
+      "position": [
+        -580,
+        840
+      ],
+      "parameters": {
+        "model": "deepseek-flash",
+        "options": {
+          "baseURL": "={{ $env.LITELLM_BASE_URL }}"
+        }
+      }
     },
     {
       "id": "w3n7",
       "name": "GitLab · changelog 提交",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-360, 620],
+      "position": [
+        -360,
+        620
+      ],
       "parameters": {
         "method": "POST",
-        "url": "=https://gitlab.example.com/api/v4/projects/{{ encodeURIComponent($env.TARGET_REPO) }}/repository/files/CHANGELOG-draft.md",
+        "url": "={{ $env.GITLAB_API }}/api/v4/projects/{{ encodeURIComponent($env.TARGET_REPO) }}/repository/files/CHANGELOG-draft.md",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "PRIVATE-TOKEN", "value": "={{ $env.GITLAB_TOKEN }}" }] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "PRIVATE-TOKEN",
+              "value": "={{ $env.GITLAB_TOKEN }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"branch\": \"changelog/{{ $json.body.ref }}\", \"encoding\": \"utf-8\", \"content\": {{ JSON.stringify($json.output) }}, \"commit_message\": \"docs(changelog): {{ $json.body.ref }}\\n\\nAgent: changelog\" }",
@@ -89,7 +152,10 @@
       "name": "便签 · 辅助流",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-800, 20],
+      "position": [
+        -800,
+        20
+      ],
       "parameters": {
         "content": "## 辅助流(两条独立路径)\n1. **成本日报**: 每日 08:00(谷时) 拉取 LiteLLM spend → 汇总 → 通知渠道(接入 IM 时在汇总后加发送节点)\n2. **changelog**: GitLab tag push webhook → flash agent 按 Keep a Changelog 归纳 → 提交 MR\n注意: 大批量任务(E2E 回归/文档同步)统一调度到 22:00-08:00(谷时窗口, 见 ADR-0001 成本要点)",
         "height": 320,
@@ -98,12 +164,64 @@
     }
   ],
   "connections": {
-    "每日 08:00": { "main": [ [ { "node": "LiteLLM · 查询用量", "type": "main", "index": 0 } ] ] },
-    "LiteLLM · 查询用量": { "main": [ [ { "node": "成本日报汇总", "type": "main", "index": 0 } ] ] },
-    "tag 事件入口": { "main": [ [ { "node": "changelog 生成", "type": "main", "index": 0 } ] ] },
-    "Flash 模型": { "ai_languageModel": [ [ { "node": "changelog 生成", "type": "ai_languageModel", "index": 0 } ] ] },
-    "changelog 生成": { "main": [ [ { "node": "GitLab · changelog 提交", "type": "main", "index": 0 } ] ] }
+    "每日 08:00": {
+      "main": [
+        [
+          {
+            "node": "LiteLLM · 查询用量",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LiteLLM · 查询用量": {
+      "main": [
+        [
+          {
+            "node": "成本日报汇总",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tag 事件入口": {
+      "main": [
+        [
+          {
+            "node": "changelog 生成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flash 模型": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "changelog 生成",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "changelog 生成": {
+      "main": [
+        [
+          {
+            "node": "GitLab · changelog 提交",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {}
 }

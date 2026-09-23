@@ -1,0 +1,55 @@
+# ============================================================
+# 测试环境 · local 栈（执行面）— 10.0.0.5 (WSL2)
+# 服务: gitlab-ce + openhands | 端口避开已占(5678个人n8n/7899代理)
+# 部署: deploy/test-env/up-local.sh
+# 注意: gitlab 首次启动 3-5 分钟(数据库迁移)
+# ============================================================
+name: ai-sdlc-exec
+
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:19.4.1-ce.0     # versions.lock (chart appVersion v19.4.1 对应)
+    restart: unless-stopped
+    hostname: gitlab-test
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://10.0.0.5:8090'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2224
+        # 测试环境瘦身(内存约束)
+        prometheus_monitoring['enable'] = false
+        gitlab_rails['registry_enabled'] = false
+        puma['worker_processes'] = 2
+        sidekiq['max_concurrency'] = 10
+        postgresql['shared_buffers'] = "256MB"
+        gitlab_rails['env'] = { 'MALLOC_ARENA_MAX' => '2' }
+        # 测试环境放开注册便于造用户; 生产必关
+        gitlab_rails['gitlab_signup_enabled'] = true
+    ports:
+      - "0.0.0.0:8090:8090"
+      - "2224:22"
+    volumes:
+      - gitlab-config:/etc/gitlab
+      - gitlab-logs:/var/log/gitlab
+      - gitlab-data:/var/opt/gitlab
+    shm_size: 256m
+    mem_limit: 4500m
+
+  openhands:
+    image: ghcr.io/openhands/agent-canvas:1.22.0   # versions.lock
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - LLM_BASE_URL=http://10.0.0.1:4000/v1     # 经 tencent 的 LiteLLM 网关
+      - LLM_API_KEY=${LITELLM_MASTER_KEY}        # 测试环境直接用 master key; 生产改虚拟 key
+      - LLM_MODEL=deepseek-v4-pro
+    ports:
+      - "0.0.0.0:8000:8000"
+    volumes:
+      - openhands-workspace:/opt/workspace_root
+    mem_limit: 2500m
+
+volumes:
+  gitlab-config:
+  gitlab-logs:
+  gitlab-data:
+  openhands-workspace:

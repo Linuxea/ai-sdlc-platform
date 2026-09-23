@@ -1,4 +1,5 @@
 {
+  "id": "f0cd4d4d-8933-4bcd-b8d6-809eeede5885",
   "name": "wf1-sdlc-main",
   "nodes": [
     {
@@ -6,16 +7,32 @@
       "name": "需求提交表单",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 1.1,
-      "position": [-1400, 300],
+      "position": [
+        -1400,
+        300
+      ],
       "parameters": {
         "formTitle": "AI 流水线 · 需求提交",
         "formDescription": "提交想法，BA agent 将生成意图文档并进入门禁A审批",
         "formFields": {
           "values": [
-            { "fieldLabel": "一句话概述", "requiredField": true },
-            { "fieldLabel": "背景与动机", "fieldType": "textarea", "requiredField": true },
-            { "fieldLabel": "期望用户与场景", "fieldType": "textarea" },
-            { "fieldLabel": "约束(合规/预算/期限)", "fieldType": "textarea" }
+            {
+              "fieldLabel": "一句话概述",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "背景与动机",
+              "fieldType": "textarea",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "期望用户与场景",
+              "fieldType": "textarea"
+            },
+            {
+              "fieldLabel": "约束(合规/预算/期限)",
+              "fieldType": "textarea"
+            }
           ]
         }
       }
@@ -25,16 +42,44 @@
       "name": "初始化上下文",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [-1180, 300],
+      "position": [
+        -1180,
+        300
+      ],
       "parameters": {
         "mode": "manual",
         "assignments": {
           "assignments": [
-            { "id": "a1", "name": "repo", "type": "string", "value": "={{ $env.TARGET_REPO }}" },
-            { "id": "a2", "name": "slug", "type": "string", "value": "={{ $('需求提交表单').item.json['一句话概述'].slice(0,20).replace(/[^a-zA-Z0-9\\u4e00-\\u9fa5]+/g,'-') }}-{{ $now.format('MMdd-HHmm') }}" },
-            { "id": "a3", "name": "runId", "type": "string", "value": "={{ $execution.id }}" },
-            { "id": "a4", "name": "gateRoundA", "type": "number", "value": 0 },
-            { "id": "a5", "name": "intentForm", "type": "object", "value": "={{ $('需求提交表单').item.json }}" }
+            {
+              "id": "a1",
+              "name": "repo",
+              "type": "string",
+              "value": "={{ $env.TARGET_REPO }}"
+            },
+            {
+              "id": "a2",
+              "name": "slug",
+              "type": "string",
+              "value": "={{ $('需求提交表单').item.json['一句话概述'].slice(0,20).replace(/[^a-zA-Z0-9\\u4e00-\\u9fa5]+/g,'-') }}-{{ $now.format('MMdd-HHmm') }}"
+            },
+            {
+              "id": "a3",
+              "name": "runId",
+              "type": "string",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "id": "a4",
+              "name": "gateRoundA",
+              "type": "number",
+              "value": 0
+            },
+            {
+              "id": "a5",
+              "name": "intentForm",
+              "type": "object",
+              "value": "={{ $('需求提交表单').item.json }}"
+            }
           ]
         }
       }
@@ -44,7 +89,10 @@
       "name": "BA · 意图文档",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [-960, 300],
+      "position": [
+        -960,
+        300
+      ],
       "parameters": {
         "promptType": "define",
         "text": "=表单输入:\n{{ JSON.stringify($json.intentForm, null, 2) }}\n\n按角色规范生成 intent.md 全文(markdown, 含澄清问题≤5条)。仅输出文档正文。",
@@ -58,10 +106,15 @@
       "name": "DeepSeek Flash 模型",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
-      "position": [-960, 520],
+      "position": [
+        -960,
+        520
+      ],
       "parameters": {
         "model": "deepseek-flash",
-        "options": { "baseURL": "={{ $env.LITELLM_BASE_URL }}" }
+        "options": {
+          "baseURL": "={{ $env.LITELLM_BASE_URL }}"
+        }
       }
     },
     {
@@ -69,12 +122,22 @@
       "name": "GitLab · 提交 intent MR",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-740, 300],
+      "position": [
+        -740,
+        300
+      ],
       "parameters": {
         "method": "POST",
-        "url": "=https://gitlab.example.com/api/v4/projects/{{ encodeURIComponent($json.repo) }}/repository/files/docs%2Fintent%2FINTENT-{{ $json.slug }}.md",
+        "url": "={{ $env.GITLAB_API }}/api/v4/projects/{{ encodeURIComponent($json.repo) }}/repository/files/docs%2Fintent%2FINTENT-{{ $json.slug }}.md",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "PRIVATE-TOKEN", "value": "={{ $env.GITLAB_TOKEN }}" }] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "PRIVATE-TOKEN",
+              "value": "={{ $env.GITLAB_TOKEN }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"branch\": \"intent/{{ $json.slug }}\", \"encoding\": \"utf-8\", \"content\": {{ JSON.stringify($json.output) }}, \"commit_message\": \"docs(intent): {{ $json.slug }}\\n\\nAgent: ba\\nIntent: {{ $json.slug }}\" }",
@@ -87,20 +150,43 @@
       "name": "门禁A · 需求审批",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [-520, 300],
-      "parameters": { "resume": "webhook", "options": { "webhookSuffix": "gate-a-{{ $json.slug }}" } }
+      "position": [
+        -520,
+        300
+      ],
+      "parameters": {
+        "resume": "webhook",
+        "options": {
+          "webhookSuffix": "gate-a-{{ $json.slug }}"
+        }
+      }
     },
     {
       "id": "n07",
       "name": "A 通过?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [-300, 300],
+      "position": [
+        -300,
+        300
+      ],
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "version": 2 },
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
           "conditions": [
-            { "id": "c1", "leftValue": "={{ $json.body.approved }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } }
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.body.approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
           ],
           "combinator": "and"
         }
@@ -111,13 +197,26 @@
       "name": "打回 BA (round+1)",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [-300, 520],
+      "position": [
+        -300,
+        520
+      ],
       "parameters": {
         "mode": "manual",
         "assignments": {
           "assignments": [
-            { "id": "a1", "name": "gateRoundA", "type": "number", "value": "={{ $('初始化上下文').item.json.gateRoundA + 1 }}" },
-            { "id": "a2", "name": "rejectNote", "type": "string", "value": "={{ $json.body.comment || '评审未通过' }}" }
+            {
+              "id": "a1",
+              "name": "gateRoundA",
+              "type": "number",
+              "value": "={{ $('初始化上下文').item.json.gateRoundA + 1 }}"
+            },
+            {
+              "id": "a2",
+              "name": "rejectNote",
+              "type": "string",
+              "value": "={{ $json.body.comment || '评审未通过' }}"
+            }
           ]
         }
       }
@@ -127,7 +226,10 @@
       "name": "Architect · 规格与ADR",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [-80, 300],
+      "position": [
+        -80,
+        300
+      ],
       "parameters": {
         "promptType": "define",
         "text": "=已批准的意图({{ $json.slug }}): 见目标仓库 docs/intent/INTENT-{{ $json.slug }}.md\n\n按角色规范产出: 1) spec.md 全文 2) ADR(如有方案取舍) 3) openapi.yaml 片段(如涉接口)。以 <<<SPEC>>> 与 <<<ADR>>> 分隔输出。",
@@ -141,10 +243,15 @@
       "name": "DeepSeek Pro-Max 模型",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
-      "position": [-80, 520],
+      "position": [
+        -80,
+        520
+      ],
       "parameters": {
         "model": "deepseek-v4-pro-max",
-        "options": { "baseURL": "={{ $env.LITELLM_BASE_URL }}" }
+        "options": {
+          "baseURL": "={{ $env.LITELLM_BASE_URL }}"
+        }
       }
     },
     {
@@ -152,12 +259,22 @@
       "name": "GitLab · 提交 spec MR",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [140, 300],
+      "position": [
+        140,
+        300
+      ],
       "parameters": {
         "method": "POST",
-        "url": "=https://gitlab.example.com/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/repository/files/docs%2Fspec%2FSPEC-{{ $('初始化上下文').item.json.slug }}.md",
+        "url": "={{ $env.GITLAB_API }}/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/repository/files/docs%2Fspec%2FSPEC-{{ $('初始化上下文').item.json.slug }}.md",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "PRIVATE-TOKEN", "value": "={{ $env.GITLAB_TOKEN }}" }] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "PRIVATE-TOKEN",
+              "value": "={{ $env.GITLAB_TOKEN }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"branch\": \"spec/{{ $('初始化上下文').item.json.slug }}\", \"encoding\": \"utf-8\", \"content\": {{ JSON.stringify($json.output) }}, \"commit_message\": \"docs(spec): {{ $('初始化上下文').item.json.slug }}\\n\\nAgent: architect\\nIntent: {{ $('初始化上下文').item.json.slug }}\" }",
@@ -169,15 +286,26 @@
       "name": "门禁B · 设计审批",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [360, 300],
-      "parameters": { "resume": "webhook", "options": { "webhookSuffix": "gate-b-{{ $json.slug }}" } }
+      "position": [
+        360,
+        300
+      ],
+      "parameters": {
+        "resume": "webhook",
+        "options": {
+          "webhookSuffix": "gate-b-{{ $json.slug }}"
+        }
+      }
     },
     {
       "id": "n13",
       "name": "SM · 任务拆解",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [580, 300],
+      "position": [
+        580,
+        300
+      ],
       "parameters": {
         "promptType": "define",
         "text": "=已批准的规格: docs/spec/SPEC-{{ $('初始化上下文').item.json.slug }}.md (目标仓库 {{ $('初始化上下文').item.json.repo }})\n\n按角色规范产出 TASKS-{{ $('初始化上下文').item.json.slug }}.md 全文。仅输出文档正文。",
@@ -191,12 +319,22 @@
       "name": "GitLab · 提交 tasks MR",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [800, 300],
+      "position": [
+        800,
+        300
+      ],
       "parameters": {
         "method": "POST",
-        "url": "=https://gitlab.example.com/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/repository/files/docs%2Ftasks%2FTASKS-{{ $('初始化上下文').item.json.slug }}.md",
+        "url": "={{ $env.GITLAB_API }}/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/repository/files/docs%2Ftasks%2FTASKS-{{ $('初始化上下文').item.json.slug }}.md",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "PRIVATE-TOKEN", "value": "={{ $env.GITLAB_TOKEN }}" }] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "PRIVATE-TOKEN",
+              "value": "={{ $env.GITLAB_TOKEN }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"branch\": \"task/{{ $('初始化上下文').item.json.slug }}\", \"encoding\": \"utf-8\", \"content\": {{ JSON.stringify($json.output) }}, \"commit_message\": \"docs(tasks): {{ $('初始化上下文').item.json.slug }}\\n\\nAgent: sm\\nIntent: {{ $('初始化上下文').item.json.slug }}\" }",
@@ -208,12 +346,22 @@
       "name": "OpenHands · 创建开发任务",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1020, 300],
+      "position": [
+        1020,
+        300
+      ],
       "parameters": {
         "method": "POST",
         "url": "={{ $env.OPENHANDS_URL }}/api/conversations",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "X-Session-Token", "value": "={{ $env.OPENHANDS_TOKEN }}" }] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Session-Token",
+              "value": "={{ $env.OPENHANDS_TOKEN }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"repo\": \"{{ $('初始化上下文').item.json.repo }}\", \"task_file\": \"docs/tasks/TASKS-{{ $('初始化上下文').item.json.slug }}.md\", \"callback_url\": \"{{ $env.N8N_PUBLIC_URL }}/webhook/openhands-done/{{ $('初始化上下文').item.json.runId }}\" }",
@@ -226,21 +374,38 @@
       "name": "OpenHands · 完成回调",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [1240, 300],
+      "position": [
+        1240,
+        300
+      ],
       "webhookId": "openhands-done",
-      "parameters": { "httpMethod": "POST", "path": "openhands-done", "responseMode": "onReceived" }
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "openhands-done",
+        "responseMode": "onReceived"
+      }
     },
     {
       "id": "n17",
       "name": "GitLab · 触发流水线",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1460, 300],
+      "position": [
+        1460,
+        300
+      ],
       "parameters": {
         "method": "POST",
-        "url": "=https://gitlab.example.com/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/pipeline",
+        "url": "={{ $env.GITLAB_API }}/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/pipeline",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "PRIVATE-TOKEN", "value": "={{ $env.GITLAB_TOKEN }}" }] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "PRIVATE-TOKEN",
+              "value": "={{ $env.GITLAB_TOKEN }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"ref\": \"task/{{ $('初始化上下文').item.json.slug }}\", \"variables\": { \"INTENT_SLUG\": \"{{ $('初始化上下文').item.json.slug }}\" } }",
@@ -252,21 +417,42 @@
       "name": "CI 完成 · 全绿?",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [1680, 300],
+      "position": [
+        1680,
+        300
+      ],
       "webhookId": "gitlab-pipeline-done",
-      "parameters": { "httpMethod": "POST", "path": "gitlab-pipeline-done", "responseMode": "onReceived" }
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gitlab-pipeline-done",
+        "responseMode": "onReceived"
+      }
     },
     {
       "id": "n19",
       "name": "流水线结果?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1900, 300],
+      "position": [
+        1900,
+        300
+      ],
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "version": 2 },
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
           "conditions": [
-            { "id": "c1", "leftValue": "={{ $json.body.object_attributes.status }}", "rightValue": "success", "operator": { "type": "string", "operation": "equals" } }
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.body.object_attributes.status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
           ],
           "combinator": "and"
         }
@@ -277,10 +463,22 @@
       "name": "CI 失败 · 通知",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [1900, 520],
+      "position": [
+        1900,
+        520
+      ],
       "parameters": {
         "mode": "manual",
-        "assignments": { "assignments": [ { "id": "a1", "name": "message", "type": "string", "value": "=CI 失败({{ $json.body.object_attributes.status }}), 流水线 {{ $json.body.object_attributes.id }} — 人工介入或打回 OpenHands 重试" } ] }
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "message",
+              "type": "string",
+              "value": "=CI 失败({{ $json.body.object_attributes.status }}), 流水线 {{ $json.body.object_attributes.id }} — 人工介入或打回 OpenHands 重试"
+            }
+          ]
+        }
       }
     },
     {
@@ -288,7 +486,10 @@
       "name": "QA · 对抗性审查",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [2120, 300],
+      "position": [
+        2120,
+        300
+      ],
       "parameters": {
         "promptType": "define",
         "text": "=MR diff 与规格: 目标仓库 {{ $('初始化上下文').item.json.repo }} 分支 task/{{ $('初始化上下文').item.json.slug }}\n规格: docs/spec/SPEC-{{ $('初始化上下文').item.json.slug }}.md\n\n按角色规范输出 QA 报告(markdown): 判定 PASS|PASS_WITH_NITS|FAIL + 验收标准逐条核对 + 缺陷分级 + 补充测试。",
@@ -302,12 +503,22 @@
       "name": "GitLab · QA 报告评论",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2340, 300],
+      "position": [
+        2340,
+        300
+      ],
       "parameters": {
         "method": "POST",
-        "url": "=https://gitlab.example.com/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/merge_requests/~{{ $('初始化上下文').item.json.slug }}/notes",
+        "url": "={{ $env.GITLAB_API }}/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/merge_requests/~{{ $('初始化上下文').item.json.slug }}/notes",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "PRIVATE-TOKEN", "value": "={{ $env.GITLAB_TOKEN }}" }] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "PRIVATE-TOKEN",
+              "value": "={{ $env.GITLAB_TOKEN }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"body\": {{ JSON.stringify($json.output) }} }",
@@ -320,9 +531,16 @@
       "name": "门禁C · MR 合并回调",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [2560, 300],
+      "position": [
+        2560,
+        300
+      ],
       "webhookId": "gitlab-mr-merged",
-      "parameters": { "httpMethod": "POST", "path": "gitlab-mr-merged", "responseMode": "onReceived" },
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gitlab-mr-merged",
+        "responseMode": "onReceived"
+      },
       "notesInFlow": "人工在 GitLab 页面审查 diff 并合并 → webhook 触发"
     },
     {
@@ -330,7 +548,10 @@
       "name": "Release · 发布材料",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [2780, 300],
+      "position": [
+        2780,
+        300
+      ],
       "parameters": {
         "promptType": "define",
         "text": "=发布上下文: 仓库 {{ $('初始化上下文').item.json.repo }}, 合并记录见 GitLab MR({{ $('初始化上下文').item.json.slug }} 相关)。\n\n按角色规范输出: 1) CHANGELOG 增量 2) RELEASE-<version>.md 部署单(含命令级回滚预案)。以 <<<CHANGELOG>>> 与 <<<RELEASE>>> 分隔。",
@@ -344,12 +565,22 @@
       "name": "GitLab · 提交 release MR",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3000, 300],
+      "position": [
+        3000,
+        300
+      ],
       "parameters": {
         "method": "POST",
-        "url": "=https://gitlab.example.com/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/repository/files/docs%2Fdeploy%2FRELEASE-draft.md",
+        "url": "={{ $env.GITLAB_API }}/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/repository/files/docs%2Fdeploy%2FRELEASE-draft.md",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "PRIVATE-TOKEN", "value": "={{ $env.GITLAB_TOKEN }}" }] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "PRIVATE-TOKEN",
+              "value": "={{ $env.GITLAB_TOKEN }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"branch\": \"release/{{ $('初始化上下文').item.json.slug }}\", \"encoding\": \"utf-8\", \"content\": {{ JSON.stringify($json.output) }}, \"commit_message\": \"docs(release): {{ $('初始化上下文').item.json.slug }}\\n\\nAgent: release\\nIntent: {{ $('初始化上下文').item.json.slug }}\" }",
@@ -361,20 +592,43 @@
       "name": "门禁D · 上线审批",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [3220, 300],
-      "parameters": { "resume": "webhook", "options": { "webhookSuffix": "gate-d-{{ $('初始化上下文').item.json.slug }}" } }
+      "position": [
+        3220,
+        300
+      ],
+      "parameters": {
+        "resume": "webhook",
+        "options": {
+          "webhookSuffix": "gate-d-{{ $('初始化上下文').item.json.slug }}"
+        }
+      }
     },
     {
       "id": "n27",
       "name": "D 通过?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [3440, 300],
+      "position": [
+        3440,
+        300
+      ],
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "version": 2 },
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
           "conditions": [
-            { "id": "c1", "leftValue": "={{ $json.body.approved }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } }
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.body.approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
           ],
           "combinator": "and"
         }
@@ -385,12 +639,22 @@
       "name": "GitLab · 触发部署",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3660, 300],
+      "position": [
+        3660,
+        300
+      ],
       "parameters": {
         "method": "POST",
-        "url": "=https://gitlab.example.com/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/deployments",
+        "url": "={{ $env.GITLAB_API }}/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/deployments",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "PRIVATE-TOKEN", "value": "={{ $env.GITLAB_TOKEN }}" }] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "PRIVATE-TOKEN",
+              "value": "={{ $env.GITLAB_TOKEN }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"ref\": \"main\", \"environment\": \"production\", \"strategy\": \"blue-green\" }",
@@ -403,13 +667,26 @@
       "name": "完成 · 记录归档",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [3880, 300],
+      "position": [
+        3880,
+        300
+      ],
       "parameters": {
         "mode": "manual",
         "assignments": {
           "assignments": [
-            { "id": "a1", "name": "result", "type": "string", "value": "=已上线: {{ $('初始化上下文').item.json.slug }} @ {{ $now.toISO() }}" },
-            { "id": "a2", "name": "runId", "type": "string", "value": "={{ $('初始化上下文').item.json.runId }}" }
+            {
+              "id": "a1",
+              "name": "result",
+              "type": "string",
+              "value": "=已上线: {{ $('初始化上下文').item.json.slug }} @ {{ $now.toISO() }}"
+            },
+            {
+              "id": "a2",
+              "name": "runId",
+              "type": "string",
+              "value": "={{ $('初始化上下文').item.json.runId }}"
+            }
           ]
         }
       }
@@ -419,9 +696,12 @@
       "name": "便签 · 导入必读",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-1400, -60],
+      "position": [
+        -1400,
+        -60
+      ],
       "parameters": {
-        "content": "## wf1 导入后必做\n1. **凭据**: 两个模型子节点(Flash/Pro-Max)挂 OpenAI API credential, key=LITELLM_MASTER_KEY, baseURL 已用 $env.LITELLM_BASE_URL\n2. **环境变量**(n8n Settings → Variables): LITELLM_BASE_URL / GITLAB_TOKEN / OPENHANDS_URL / OPENHANDS_TOKEN / TARGET_REPO / N8N_PUBLIC_URL\n3. **GitLab 域名**: 全局替换 https://gitlab.example.com 为实际实例\n4. **MR IID 透传**: QA 评论节点的 MR IID 表达式需按实际 API 响应修正(节点上有 notesInFlow 提示)\n5. **OpenHands API**: 请求体字段以部署版本的 API 文档为准\n6. 各 agent systemMessage 为摘要版, 建议替换为平台仓库 agents/*.md 全文(UI 微调后导出回库)",
+        "content": "## wf1 导入后必做\n1. **凭据**: 两个模型子节点(Flash/Pro-Max)挂 OpenAI API credential, key=LITELLM_MASTER_KEY, baseURL 已用 $env.LITELLM_BASE_URL\n2. **环境变量**(n8n Settings → Variables): LITELLM_BASE_URL / GITLAB_TOKEN / OPENHANDS_URL / OPENHANDS_TOKEN / TARGET_REPO / N8N_PUBLIC_URL\n3. **GitLab 实例**: 设置环境变量 GITLAB_API(如 http://10.0.0.5:8090), 所有节点已引用 {{ $env.GITLAB_API }}\n4. **MR IID 透传**: QA 评论节点的 MR IID 表达式需按实际 API 响应修正(节点上有 notesInFlow 提示)\n5. **OpenHands API**: 请求体字段以部署版本的 API 文档为准\n6. 各 agent systemMessage 为摘要版, 建议替换为平台仓库 agents/*.md 全文(UI 微调后导出回库)",
         "height": 340,
         "width": 520
       }
@@ -431,7 +711,10 @@
       "name": "便签 · 门禁说明",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-520, -60],
+      "position": [
+        -520,
+        -60
+      ],
       "parameters": {
         "content": "## 四道门禁\n- **A/B/D**: Wait(webhook) 挂起 → 审批人打开表单链接(MVP)或 IM 卡片(Phase4) → POST 回调 {approved: true|false, comment: ...}\n- **C**: 人工在 GitLab MR 页审 diff 点合并 → merge event webhook 继续\n- 拒绝路径: 打回上游 agent 定点修订, 3 轮上限后升级人工(在打回节点加 IF 判断 round≥3)",
         "height": 300,
@@ -440,34 +723,335 @@
     }
   ],
   "connections": {
-    "需求提交表单": { "main": [ [ { "node": "初始化上下文", "type": "main", "index": 0 } ] ] },
-    "初始化上下文": { "main": [ [ { "node": "BA · 意图文档", "type": "main", "index": 0 } ] ] },
-    "DeepSeek Flash 模型": { "ai_languageModel": [ [ { "node": "BA · 意图文档", "type": "ai_languageModel", "index": 0 }, { "node": "SM · 任务拆解", "type": "ai_languageModel", "index": 0 }, { "node": "Release · 发布材料", "type": "ai_languageModel", "index": 0 } ] ] },
-    "打回 BA (round+1)": { "main": [ [ { "node": "BA · 意图文档", "type": "main", "index": 0 } ] ] },
-    "BA · 意图文档": { "main": [ [ { "node": "GitLab · 提交 intent MR", "type": "main", "index": 0 } ] ] },
-    "GitLab · 提交 intent MR": { "main": [ [ { "node": "门禁A · 需求审批", "type": "main", "index": 0 } ] ] },
-    "门禁A · 需求审批": { "main": [ [ { "node": "A 通过?", "type": "main", "index": 0 } ] ] },
-    "A 通过?": { "main": [ [ { "node": "Architect · 规格与ADR", "type": "main", "index": 0 } ], [ { "node": "打回 BA (round+1)", "type": "main", "index": 0 } ] ] },
-    "DeepSeek Pro-Max 模型": { "ai_languageModel": [ [ { "node": "Architect · 规格与ADR", "type": "ai_languageModel", "index": 0 }, { "node": "QA · 对抗性审查", "type": "ai_languageModel", "index": 0 } ] ] },
-    "Architect · 规格与ADR": { "main": [ [ { "node": "GitLab · 提交 spec MR", "type": "main", "index": 0 } ] ] },
-    "GitLab · 提交 spec MR": { "main": [ [ { "node": "门禁B · 设计审批", "type": "main", "index": 0 } ] ] },
-    "门禁B · 设计审批": { "main": [ [ { "node": "SM · 任务拆解", "type": "main", "index": 0 } ] ] },
-    "SM · 任务拆解": { "main": [ [ { "node": "GitLab · 提交 tasks MR", "type": "main", "index": 0 } ] ] },
-    "GitLab · 提交 tasks MR": { "main": [ [ { "node": "OpenHands · 创建开发任务", "type": "main", "index": 0 } ] ] },
-    "OpenHands · 创建开发任务": { "main": [ [ { "node": "OpenHands · 完成回调", "type": "main", "index": 0 } ] ] },
-    "OpenHands · 完成回调": { "main": [ [ { "node": "GitLab · 触发流水线", "type": "main", "index": 0 } ] ] },
-    "GitLab · 触发流水线": { "main": [ [ { "node": "CI 完成 · 全绿?", "type": "main", "index": 0 } ] ] },
-    "CI 完成 · 全绿?": { "main": [ [ { "node": "流水线结果?", "type": "main", "index": 0 } ] ] },
-    "流水线结果?": { "main": [ [ { "node": "QA · 对抗性审查", "type": "main", "index": 0 } ], [ { "node": "CI 失败 · 通知", "type": "main", "index": 0 } ] ] },
-    "QA · 对抗性审查": { "main": [ [ { "node": "GitLab · QA 报告评论", "type": "main", "index": 0 } ] ] },
-    "GitLab · QA 报告评论": { "main": [ [ { "node": "门禁C · MR 合并回调", "type": "main", "index": 0 } ] ] },
-    "门禁C · MR 合并回调": { "main": [ [ { "node": "Release · 发布材料", "type": "main", "index": 0 } ] ] },
-    "Release · 发布材料": { "main": [ [ { "node": "GitLab · 提交 release MR", "type": "main", "index": 0 } ] ] },
-    "GitLab · 提交 release MR": { "main": [ [ { "node": "门禁D · 上线审批", "type": "main", "index": 0 } ] ] },
-    "门禁D · 上线审批": { "main": [ [ { "node": "D 通过?", "type": "main", "index": 0 } ] ] },
-    "D 通过?": { "main": [ [ { "node": "GitLab · 触发部署", "type": "main", "index": 0 } ] ] },
-    "GitLab · 触发部署": { "main": [ [ { "node": "完成 · 记录归档", "type": "main", "index": 0 } ] ] }
+    "需求提交表单": {
+      "main": [
+        [
+          {
+            "node": "初始化上下文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "初始化上下文": {
+      "main": [
+        [
+          {
+            "node": "BA · 意图文档",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Flash 模型": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "BA · 意图文档",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "SM · 任务拆解",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Release · 发布材料",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "打回 BA (round+1)": {
+      "main": [
+        [
+          {
+            "node": "BA · 意图文档",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BA · 意图文档": {
+      "main": [
+        [
+          {
+            "node": "GitLab · 提交 intent MR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitLab · 提交 intent MR": {
+      "main": [
+        [
+          {
+            "node": "门禁A · 需求审批",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "门禁A · 需求审批": {
+      "main": [
+        [
+          {
+            "node": "A 通过?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "A 通过?": {
+      "main": [
+        [
+          {
+            "node": "Architect · 规格与ADR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "打回 BA (round+1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Pro-Max 模型": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Architect · 规格与ADR",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "QA · 对抗性审查",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Architect · 规格与ADR": {
+      "main": [
+        [
+          {
+            "node": "GitLab · 提交 spec MR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitLab · 提交 spec MR": {
+      "main": [
+        [
+          {
+            "node": "门禁B · 设计审批",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "门禁B · 设计审批": {
+      "main": [
+        [
+          {
+            "node": "SM · 任务拆解",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SM · 任务拆解": {
+      "main": [
+        [
+          {
+            "node": "GitLab · 提交 tasks MR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitLab · 提交 tasks MR": {
+      "main": [
+        [
+          {
+            "node": "OpenHands · 创建开发任务",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenHands · 创建开发任务": {
+      "main": [
+        [
+          {
+            "node": "OpenHands · 完成回调",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenHands · 完成回调": {
+      "main": [
+        [
+          {
+            "node": "GitLab · 触发流水线",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitLab · 触发流水线": {
+      "main": [
+        [
+          {
+            "node": "CI 完成 · 全绿?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CI 完成 · 全绿?": {
+      "main": [
+        [
+          {
+            "node": "流水线结果?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "流水线结果?": {
+      "main": [
+        [
+          {
+            "node": "QA · 对抗性审查",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "CI 失败 · 通知",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "QA · 对抗性审查": {
+      "main": [
+        [
+          {
+            "node": "GitLab · QA 报告评论",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitLab · QA 报告评论": {
+      "main": [
+        [
+          {
+            "node": "门禁C · MR 合并回调",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "门禁C · MR 合并回调": {
+      "main": [
+        [
+          {
+            "node": "Release · 发布材料",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Release · 发布材料": {
+      "main": [
+        [
+          {
+            "node": "GitLab · 提交 release MR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitLab · 提交 release MR": {
+      "main": [
+        [
+          {
+            "node": "门禁D · 上线审批",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "门禁D · 上线审批": {
+      "main": [
+        [
+          {
+            "node": "D 通过?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "D 通过?": {
+      "main": [
+        [
+          {
+            "node": "GitLab · 触发部署",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitLab · 触发部署": {
+      "main": [
+        [
+          {
+            "node": "完成 · 记录归档",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {}
 }

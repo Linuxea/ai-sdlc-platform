@@ -5,6 +5,8 @@
 set -euo pipefail
 URL="${1:-http://127.0.0.1:4000}"
 KEY="${LITELLM_MASTER_KEY:?环境变量 LITELLM_MASTER_KEY 未设置}"
+export NO_PROXY="10.0.0.0/24,localhost,127.0.0.1,${NO_PROXY:-}"   # 网关在 WG/内网, 绕过本机代理
+export no_proxy="$NO_PROXY"
 
 fail=0
 check() { # name model [max_tokens] [extra_json]

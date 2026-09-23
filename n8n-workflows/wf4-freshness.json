@@ -1,4 +1,5 @@
 {
+  "id": "4cec8a1e-3230-439d-8d55-885a5ebec054",
   "name": "wf4-freshness",
   "nodes": [
     {
@@ -6,20 +7,42 @@
       "name": "每周六 03:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [-1000, 300],
-      "parameters": { "rule": { "interval": [ { "field": "cronExpression", "expression": "0 3 * * 6" } ] } }
+      "position": [
+        -1000,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 * * 6"
+            }
+          ]
+        }
+      }
     },
     {
       "id": "w4n2",
       "name": "读取 versions.lock",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-780, 300],
+      "position": [
+        -780,
+        300
+      ],
       "parameters": {
         "method": "GET",
-        "url": "https://gitlab.example.com/api/v4/projects/{{ encodeURIComponent($env.PLATFORM_REPO) }}/repository/files/versions%2Elock/raw?ref=main",
+        "url": "={{ $env.GITLAB_API }}/api/v4/projects/{{ encodeURIComponent($env.PLATFORM_REPO) }}/repository/files/versions%2Elock/raw?ref=main",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "PRIVATE-TOKEN", "value": "={{ $env.GITLAB_TOKEN }}" }] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "PRIVATE-TOKEN",
+              "value": "={{ $env.GITLAB_TOKEN }}"
+            }
+          ]
+        },
         "options": {}
       }
     },
@@ -28,7 +51,10 @@
       "name": "解析组件表",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-560, 300],
+      "position": [
+        -560,
+        300
+      ],
       "parameters": {
         "jsCode": "const rows = $input.first().json.data || $input.first().json.body || '';\nconst out = [];\nfor (const line of String(rows).split('\\n')) {\n  const m = line.match(/^\\|\\s*([^|]+?)\\s*\\|\\s*([^|]+?)\\s*\\|\\s*([^|]+?)\\s*\\|\\s*([^|]+?)\\s*\\|/);\n  if (m && !m[1].startsWith('component') && !m[1].startsWith('-') && !m[1].startsWith(':')) {\n    out.push({ component: m[1].trim(), locked_version: m[2].trim(), verified_at: m[3].trim(), source: m[4].trim() });\n  }\n}\nreturn out.map(item => ({ json: item }));"
       }
@@ -38,15 +64,24 @@
       "name": "逐组件巡检",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [-340, 300],
-      "parameters": { "batchSize": 1, "options": {} }
+      "position": [
+        -340,
+        300
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
     },
     {
       "id": "w4n5",
       "name": "巡检 · 组件核查",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [-120, 300],
+      "position": [
+        -120,
+        300
+      ],
       "parameters": {
         "promptType": "define",
         "text": "=组件: {{ $json.component }}\n锁定版本: {{ $json.locked_version }}\n验证日期: {{ $json.verified_at }}\n官方来源: {{ $json.source }}\n\n用搜索工具核查: 1) 是否有更新版本 2) 锁定版本是否被弃用/EOL 3) 是否有相关高危 CVE。\n严格输出 JSON: {\"component\":\"...\",\"status\":\"OK|UPDATE_AVAILABLE|DEPRECATED|CRITICAL\",\"locked_version\":\"...\",\"latest_version\":\"...或null\",\"findings\":\"一句话\",\"sources\":[\"url1\"],\"propose_intent\":true|false}\npropose_intent 仅在 DEPRECATED/CRITICAL 或 major 更新时为 true。",
@@ -60,15 +95,26 @@
       "name": "Flash 模型",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
-      "position": [-120, 640],
-      "parameters": { "model": "deepseek-flash", "options": { "baseURL": "={{ $env.LITELLM_BASE_URL }}" } }
+      "position": [
+        -120,
+        640
+      ],
+      "parameters": {
+        "model": "deepseek-flash",
+        "options": {
+          "baseURL": "={{ $env.LITELLM_BASE_URL }}"
+        }
+      }
     },
     {
       "id": "w4n7",
       "name": "搜索工具",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [120, 640],
+      "position": [
+        120,
+        640
+      ],
       "parameters": {
         "toolDescription": "搜索组件最新版本/弃用公告/CVE。GET 请求, 返回 JSON/markdown。",
         "url": "=https://search.example.com/api?q={{ $fromAI('query') }}",
@@ -81,11 +127,28 @@
       "name": "需要升级 intent?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [100, 300],
+      "position": [
+        100,
+        300
+      ],
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "version": 2 },
-          "conditions": [ { "id": "c1", "leftValue": "={{ $json.propose_intent }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } } ],
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.propose_intent }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
           "combinator": "and"
         }
       }
@@ -95,12 +158,22 @@
       "name": "GitLab · 升级 intent MR",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [320, 200],
+      "position": [
+        320,
+        200
+      ],
       "parameters": {
         "method": "POST",
-        "url": "=https://gitlab.example.com/api/v4/projects/{{ encodeURIComponent($env.PLATFORM_REPO) }}/repository/files/docs%2Fintent%2FUPGRADE-{{ $json.component }}-{{ $now.format('MMdd') }}.md",
+        "url": "={{ $env.GITLAB_API }}/api/v4/projects/{{ encodeURIComponent($env.PLATFORM_REPO) }}/repository/files/docs%2Fintent%2FUPGRADE-{{ $json.component }}-{{ $now.format('MMdd') }}.md",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "PRIVATE-TOKEN", "value": "={{ $env.GITLAB_TOKEN }}" }] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "PRIVATE-TOKEN",
+              "value": "={{ $env.GITLAB_TOKEN }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"branch\": \"intent/upgrade-{{ $json.component }}-{{ $now.format('MMdd') }}\", \"encoding\": \"utf-8\", \"content\": \"# UPGRADE INTENT: {{ $json.component }}\\n\\n- 状态: 自动生成(新鲜度巡检)\\n- 日期: {{ $now.format('yyyy-MM-dd') }}\\n\\n## 发现\\n{{ $json.findings }}\\n\\n## 锁定→建议\\n{{ $json.locked_version }} → {{ $json.latest_version }}\\n\\n## 来源\\n{{ $json.sources.join('\n') }}\\n\\n> 走门禁A评审后进入升级迭代\", \"commit_message\": \"docs(intent): freshness upgrade {{ $json.component }}\\n\\nAgent: freshness\" }",
@@ -112,10 +185,22 @@
       "name": "巡检日志归档",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [320, 420],
+      "position": [
+        320,
+        420
+      ],
       "parameters": {
         "mode": "manual",
-        "assignments": { "assignments": [ { "id": "a1", "name": "audit", "type": "string", "value": "=[{{ $json.component }}] {{ $json.status }}: {{ $json.findings }} @ {{ $now.toISO() }}" } ] }
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "audit",
+              "type": "string",
+              "value": "=[{{ $json.component }}] {{ $json.status }}: {{ $json.findings }} @ {{ $now.toISO() }}"
+            }
+          ]
+        }
       }
     },
     {
@@ -123,7 +208,10 @@
       "name": "便签 · 新鲜度巡检",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-1000, 20],
+      "position": [
+        -1000,
+        20
+      ],
       "parameters": {
         "content": "## 新鲜度巡检(版本纪律的执行者)\n- 每周六 03:00(谷时) 读取平台仓库 versions.lock\n- 逐组件经搜索工具核查: 新版本/弃用/高危CVE\n- DEPRECATED/CRITICAL/major → 自动生成 UPGRADE INTENT → 走 wf1 门禁A流程\n- 其余 → 巡检日志(审计留痕, 证明'没偷懒也没漏检')\n- 搜索工具节点需替换为实际 API(Tavily/SearXNG); DeepSeek 模型可用 scripts/probe_deepseek.py 直查",
         "height": 340,
@@ -132,17 +220,126 @@
     }
   ],
   "connections": {
-    "每周六 03:00": { "main": [ [ { "node": "读取 versions.lock", "type": "main", "index": 0 } ] ] },
-    "读取 versions.lock": { "main": [ [ { "node": "解析组件表", "type": "main", "index": 0 } ] ] },
-    "解析组件表": { "main": [ [ { "node": "逐组件巡检", "type": "main", "index": 0 } ] ] },
-    "逐组件巡检": { "main": [ [ { "node": "巡检 · 组件核查", "type": "main", "index": 0 } ] ] },
-    "巡检 · 组件核查": { "main": [ [ { "node": "需要升级 intent?", "type": "main", "index": 0 } ] ] },
-    "需要升级 intent?": { "main": [ [ { "node": "GitLab · 升级 intent MR", "type": "main", "index": 0 } ], [ { "node": "巡检日志归档", "type": "main", "index": 0 } ] ] },
-    "Flash 模型": { "ai_languageModel": [ [ { "node": "巡检 · 组件核查", "type": "ai_languageModel", "index": 0 } ] ] },
-    "搜索工具": { "ai_tool": [ [ { "node": "巡检 · 组件核查", "type": "ai_tool", "index": 0 } ] ] },
-    "GitLab · 升级 intent MR": { "main": [ [ { "node": "逐组件巡检", "type": "main", "index": 0 } ] ] },
-    "巡检日志归档": { "main": [ [ { "node": "逐组件巡检", "type": "main", "index": 0 } ] ] }
+    "每周六 03:00": {
+      "main": [
+        [
+          {
+            "node": "读取 versions.lock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读取 versions.lock": {
+      "main": [
+        [
+          {
+            "node": "解析组件表",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析组件表": {
+      "main": [
+        [
+          {
+            "node": "逐组件巡检",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "逐组件巡检": {
+      "main": [
+        [
+          {
+            "node": "巡检 · 组件核查",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "巡检 · 组件核查": {
+      "main": [
+        [
+          {
+            "node": "需要升级 intent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "需要升级 intent?": {
+      "main": [
+        [
+          {
+            "node": "GitLab · 升级 intent MR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "巡检日志归档",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flash 模型": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "巡检 · 组件核查",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "搜索工具": {
+      "ai_tool": [
+        [
+          {
+            "node": "巡检 · 组件核查",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitLab · 升级 intent MR": {
+      "main": [
+        [
+          {
+            "node": "逐组件巡检",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "巡检日志归档": {
+      "main": [
+        [
+          {
+            "node": "逐组件巡检",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {}
 }

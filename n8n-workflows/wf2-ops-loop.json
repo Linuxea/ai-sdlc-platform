@@ -1,4 +1,5 @@
 {
+  "id": "5e543c0d-6b47-4efe-bf87-8ef3424f7150",
   "name": "wf2-ops-loop",
   "nodes": [
     {
@@ -6,16 +7,26 @@
       "name": "监控告警入口",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-800, 300],
+      "position": [
+        -800,
+        300
+      ],
       "webhookId": "ops-alert",
-      "parameters": { "httpMethod": "POST", "path": "ops-alert", "responseMode": "onReceived" }
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ops-alert",
+        "responseMode": "onReceived"
+      }
     },
     {
       "id": "w2n2",
       "name": "诊断 · incident",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [-580, 300],
+      "position": [
+        -580,
+        300
+      ],
       "parameters": {
         "promptType": "define",
         "text": "=告警载荷:\n{{ JSON.stringify($json.body || $json, null, 2) }}\n\n按规范输出 incident.md: 根因假设(附证据链)/影响面/已采取动作/建议处置(对应规格或部署单)/需人工决策点。仅输出文档正文。",
@@ -29,20 +40,38 @@
       "name": "Pro-Max 模型",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
-      "position": [-580, 520],
-      "parameters": { "model": "deepseek-v4-pro-max", "options": { "baseURL": "={{ $env.LITELLM_BASE_URL }}" } }
+      "position": [
+        -580,
+        520
+      ],
+      "parameters": {
+        "model": "deepseek-v4-pro-max",
+        "options": {
+          "baseURL": "={{ $env.LITELLM_BASE_URL }}"
+        }
+      }
     },
     {
       "id": "w2n4",
       "name": "GitLab · 提交 incident MR",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-360, 300],
+      "position": [
+        -360,
+        300
+      ],
       "parameters": {
         "method": "POST",
-        "url": "=https://gitlab.example.com/api/v4/projects/{{ encodeURIComponent($env.TARGET_REPO) }}/repository/files/docs%2Fintent%2FINCIDENT-{{ $now.format('MMdd-HHmm') }}.md",
+        "url": "={{ $env.GITLAB_API }}/api/v4/projects/{{ encodeURIComponent($env.TARGET_REPO) }}/repository/files/docs%2Fintent%2FINCIDENT-{{ $now.format('MMdd-HHmm') }}.md",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "PRIVATE-TOKEN", "value": "={{ $env.GITLAB_TOKEN }}" }] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "PRIVATE-TOKEN",
+              "value": "={{ $env.GITLAB_TOKEN }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"branch\": \"incident/{{ $now.format('MMdd-HHmm') }}\", \"encoding\": \"utf-8\", \"content\": {{ JSON.stringify($json.output) }}, \"commit_message\": \"docs(incident): automated diagnosis\\n\\nAgent: ops-diagnosis\" }",
@@ -54,19 +83,44 @@
       "name": "人工确认处置",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [-140, 300],
-      "parameters": { "resume": "webhook", "options": { "webhookSuffix": "incident-confirm-{{ $now.format('MMdd-HHmm') }}" } }
+      "position": [
+        -140,
+        300
+      ],
+      "parameters": {
+        "resume": "webhook",
+        "options": {
+          "webhookSuffix": "incident-confirm-{{ $now.format('MMdd-HHmm') }}"
+        }
+      }
     },
     {
       "id": "w2n6",
       "name": "确认回流?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [80, 300],
+      "position": [
+        80,
+        300
+      ],
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "version": 2 },
-          "conditions": [ { "id": "c1", "leftValue": "={{ $json.body.approved }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } } ],
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.body.approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
           "combinator": "and"
         }
       }
@@ -76,8 +130,14 @@
       "name": "触发 wf1 主流程",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
-      "position": [300, 300],
-      "parameters": { "workflowId": "REPLACE_WITH_WF1_WORKFLOW_ID", "mode": "list" },
+      "position": [
+        300,
+        300
+      ],
+      "parameters": {
+        "workflowId": "REPLACE_WITH_WF1_WORKFLOW_ID",
+        "mode": "list"
+      },
       "notesInFlow": "导入后: 选择 wf1, 并在 workflowInputs 映射 slug/表单字段"
     },
     {
@@ -85,7 +145,10 @@
       "name": "便签 · 运维回环",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-800, 40],
+      "position": [
+        -800,
+        40
+      ],
       "parameters": {
         "content": "## 运维回环\n1. 告警源(Prometheus Alertmanager / 自定义) webhook 到 /ops-alert\n2. 诊断 agent(pro-max) 产 incident.md → MR\n3. 人工确认(表单回调 {approved,comment})\n4. approved → ExecuteWorkflow 调 wf1, incident 作为新 intent 进入标准门禁流程(闭环)\n5. 拒绝 → 记录处置结果, 流程结束",
         "height": 320,
@@ -94,13 +157,75 @@
     }
   ],
   "connections": {
-    "监控告警入口": { "main": [ [ { "node": "诊断 · incident", "type": "main", "index": 0 } ] ] },
-    "Pro-Max 模型": { "ai_languageModel": [ [ { "node": "诊断 · incident", "type": "ai_languageModel", "index": 0 } ] ] },
-    "诊断 · incident": { "main": [ [ { "node": "GitLab · 提交 incident MR", "type": "main", "index": 0 } ] ] },
-    "GitLab · 提交 incident MR": { "main": [ [ { "node": "人工确认处置", "type": "main", "index": 0 } ] ] },
-    "人工确认处置": { "main": [ [ { "node": "确认回流?", "type": "main", "index": 0 } ] ] },
-    "确认回流?": { "main": [ [ { "node": "触发 wf1 主流程", "type": "main", "index": 0 } ] ] }
+    "监控告警入口": {
+      "main": [
+        [
+          {
+            "node": "诊断 · incident",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pro-Max 模型": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "诊断 · incident",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "诊断 · incident": {
+      "main": [
+        [
+          {
+            "node": "GitLab · 提交 incident MR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitLab · 提交 incident MR": {
+      "main": [
+        [
+          {
+            "node": "人工确认处置",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "人工确认处置": {
+      "main": [
+        [
+          {
+            "node": "确认回流?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "确认回流?": {
+      "main": [
+        [
+          {
+            "node": "触发 wf1 主流程",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {}
 }
