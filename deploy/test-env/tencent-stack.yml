@@ -49,6 +49,7 @@ services:
     environment:
       # n8n 基础
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false   # 工作流需读 $env(网关/GitLab 地址)
       - N8N_HOST=10.0.0.1
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
@@ -66,6 +67,7 @@ services:
       - TARGET_REPO=platform/pilot-app
       - N8N_PUBLIC_URL=http://10.0.0.1:5678
       - N8N_METRICS=false
+      - N8N_RUNNERS_TASK_TIMEOUT=1800   # 秒; Code 轮询节点需要长于默认值
       # 执行历史: 测试期全保留便于审计, 上限防磁盘爆
       - EXECUTIONS_DATA_PRUNE=true
       - EXECUTIONS_DATA_MAX_AGE=30
