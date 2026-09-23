@@ -1,0 +1,30 @@
+# MkDocs Material 配置 — 文档门户(CI 自动发布, 见 .gitlab-ci.yml docs job)
+site_name: <PROJECT_NAME>
+site_description: <PROJECT_DESC>
+
+theme:
+  name: material
+  language: zh
+  features:
+    - navigation.tabs
+    - navigation.indexes
+    - content.code.copy
+
+nav:
+  - 首页: index.md
+  - 宪章: constitution.md
+  - 需求意图: intent/
+  - 规格: spec/
+  - 架构决策: design/
+  - 任务: tasks/
+  - API 契约: api/openapi.md
+  - 发布记录: deploy/
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed
+  - tables

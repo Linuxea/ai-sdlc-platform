@@ -1,0 +1,19 @@
+# 业务项目 CI — 引用平台统一模板（M5 提供具体 job 定义）
+# 平台仓库路径按实际 GitLab group 调整
+include:
+  - project: platform/ai-sdlc-platform
+    ref: main
+    file: pipelines/templates/main.yml
+
+stages:
+  - lint
+  - test
+  - build
+  - scan
+  - deploy
+
+variables:
+  # 覆盖点：按项目技术栈声明（见 pipelines/templates/main.yml 支持的开关）
+  # ENABLE_UNIT_TEST: "true"
+  # ENABLE_TRIVY: "true"
+  DEPLOY_STRATEGY: "blue-green"
