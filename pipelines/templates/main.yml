@@ -22,7 +22,7 @@ workflow:
 # ---------- lint ----------
 lint:
   stage: lint
-  image: python:3.12-slim      # 按项目技术栈在项目级覆盖 image
+  image: ${CI_BASE_IMAGE}      # 按项目技术栈在项目级覆盖 image
   rules:
     - if: $LINT_CMD
   script:
@@ -31,7 +31,7 @@ lint:
 # ---------- test ----------
 unit-test:
   stage: test
-  image: python:3.12-slim
+  image: ${CI_BASE_IMAGE}
   rules:
     - if: $ENABLE_UNIT_TEST == "true" && $TEST_CMD
   script:
@@ -47,7 +47,7 @@ unit-test:
 # ---------- build ----------
 build:
   stage: build
-  image: python:3.12-slim
+  image: ${CI_BASE_IMAGE}
   rules:
     - if: $BUILD_CMD
   script:
@@ -84,7 +84,7 @@ trivy:
 # ---------- docs 门户 ----------
 pages:
   stage: build
-  image: python:3.12-slim
+  image: ${CI_BASE_IMAGE}
   script:
     - pip install --quiet mkdocs-material==9.7.7
     - mkdocs build --site-dir public
