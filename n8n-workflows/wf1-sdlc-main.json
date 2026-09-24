@@ -83,7 +83,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer {{ .LITELLM_MASTER_KEY }}"
+              "value": "=Bearer {{ $env.LITELLM_MASTER_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -225,7 +225,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer {{ .LITELLM_MASTER_KEY }}"
+              "value": "=Bearer {{ $env.LITELLM_MASTER_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -306,7 +306,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer {{ .LITELLM_MASTER_KEY }}"
+              "value": "=Bearer {{ $env.LITELLM_MASTER_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -389,75 +389,15 @@
     },
     {
       "id": "n17",
-      "name": "GitLab · 触发流水线",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "CI · 触发流水线",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         1460,
         300
       ],
       "parameters": {
-        "method": "POST",
-        "url": "={{ $env.GITLAB_API }}/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/pipeline",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "PRIVATE-TOKEN",
-              "value": "={{ $env.GITLAB_TOKEN }}"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={ \"ref\": \"task/{{ $('初始化上下文').item.json.slug }}\", \"variables\": { \"INTENT_SLUG\": \"{{ $('初始化上下文').item.json.slug }}\" } }",
-        "options": {}
-      }
-    },
-    {
-      "id": "n18",
-      "name": "CI 完成 · 全绿?",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        1680,
-        300
-      ],
-      "webhookId": "4121f6d2-e713-4dd6-90d9-21fe9aa4ccd8",
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "gitlab-pipeline-done",
-        "responseMode": "onReceived"
-      }
-    },
-    {
-      "id": "n19",
-      "name": "流水线结果?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        1900,
-        300
-      ],
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "c1",
-              "leftValue": "={{ $json.body.object_attributes.status }}",
-              "rightValue": "success",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        }
+        "jsCode": "// 触发 CI 流水线(Code 版, 带诊断)\nconst ctx = $('初始化上下文').first().json;\nconst ref = 'task/' + ctx.slug;\nconst token = $env.GITLAB_TOKEN;\nconst url = $env.GITLAB_API + '/api/v4/projects/' + encodeURIComponent(ctx.repo) + '/pipeline?ref=' + encodeURIComponent(ref);\ntry {\n  const r = await this.helpers.httpRequest({ method: 'POST', url, headers: { 'PRIVATE-TOKEN': token } });\n  return [{ json: { pipeline_id: r.id, status: r.status, ref } }];\n} catch (e) {\n  const body = (e.response && e.response.body) || '';\n  throw new Error('触发失败 ref=' + ref + ' url=' + url + ' resp=' + JSON.stringify(body).slice(0, 250));\n}"
       }
     },
     {
@@ -500,7 +440,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer {{ .LITELLM_MASTER_KEY }}"
+              "value": "=Bearer {{ $env.LITELLM_MASTER_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -524,7 +464,7 @@
     },
     {
       "id": "n22",
-      "name": "GitLab · QA 报告评论",
+      "name": "GitLab · QA 报告 MR",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -533,7 +473,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.GITLAB_API }}/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/merge_requests/~{{ $('初始化上下文').item.json.slug }}/notes",
+        "url": "={{ $env.GITLAB_API }}/api/v4/projects/{{ encodeURIComponent($('初始化上下文').item.json.repo) }}/merge_requests",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -545,27 +485,10 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={ \"body\": {{ JSON.stringify($json.choices[0].message.content) }} }",
+        "jsonBody": "={ \"source_branch\": \"task/$('初始化上下文').item.json.slug\", \"target_branch\": \"main\", \"title\": \"task: $('初始化上下文').item.json.slug (开发产出)\", \"description\": {{ JSON.stringify(\"## QA 报告\\n\\n\" + $json.choices[0].message.content) }} }",
         "options": {}
       },
       "notesInFlow": "MR IID 需从前面 GitLab API 响应透传（导入后修正表达式）"
-    },
-    {
-      "id": "n23",
-      "name": "门禁C · MR 合并回调",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        2560,
-        300
-      ],
-      "webhookId": "4f3c5cf2-bfc7-4421-8b7b-fa304eeee0fa",
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "gitlab-mr-merged",
-        "responseMode": "onReceived"
-      },
-      "notesInFlow": "人工在 GitLab 页面审查 diff 并合并 → webhook 触发"
     },
     {
       "id": "n24",
@@ -584,7 +507,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer {{ .LITELLM_MASTER_KEY }}"
+              "value": "=Bearer {{ $env.LITELLM_MASTER_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -769,25 +692,14 @@
     {
       "id": "n16",
       "name": "OpenHands · 完成轮询",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         1240,
         300
       ],
       "parameters": {
-        "method": "GET",
-        "url": "={{ $env.OPENHANDS_URL }}/api/conversations/{{ $('OpenHands · 创建开发任务').item.json.id }}/events/search?limit=200",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "X-Session-API-Key",
-              "value": "={{ $env.OPENHANDS_API_KEY }}"
-            }
-          ]
-        },
-        "options": {}
+        "jsCode": "// OpenHands 完成轮询: 查对话 execution_status\nconst createResp = $('OpenHands · 创建开发任务').first().json;\nconst cid = createResp.id;\nconst key = $env.OPENHANDS_API_KEY;\nconst base = $env.OPENHANDS_URL || 'http://10.0.0.5:8000';\nif (!cid || !/^[0-9a-f-]{36}$/.test(String(cid))) {\n  throw new Error('conversation id 非法: ' + JSON.stringify(createResp).slice(0, 200));\n}\nlet status = 'unknown';\nfor (let i = 0; i < 60; i++) {\n  const r = await this.helpers.httpRequest({\n    method: 'GET',\n    url: base + '/api/conversations/' + cid,\n    headers: { 'X-Session-API-Key': key },\n  });\n  status = r.execution_status || status;\n  if (status === 'finished') {\n    return [{ json: { conversation_id: cid, finished: true, status } }];\n  }\n  if (status === 'error' || status === 'paused') {\n    throw new Error('OpenHands 状态=' + status + ' cid=' + cid);\n  }\n  await new Promise(res => setTimeout(res, 15000));\n}\nthrow new Error('OpenHands 900s 未完成(最后状态=' + status + ') cid=' + cid);"
       },
       "notesInFlow": "MVP 单次轮询; 生产化改 OpenHands automation 回调"
     },
@@ -809,7 +721,7 @@
           "conditions": [
             {
               "id": "c1",
-              "leftValue": "={{ JSON.stringify($json.items || []).includes('\"value\":\"finished\"') || JSON.stringify($json.items || []).includes('\"value\": \"finished\"') }}",
+              "leftValue": "={{ $json.finished === true }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -836,6 +748,32 @@
         "unit": "seconds"
       },
       "webhookId": "6e57229d-371b-4cb1-947d-a8bd16695fcc"
+    },
+    {
+      "id": "nCiPoll",
+      "name": "CI · 轮询流水线",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// 轮询 CI pipeline 状态直到终态\nconst ctx = $('初始化上下文').first().json;\nconst ref = 'task/' + ctx.slug;\nconst token = $env.GITLAB_TOKEN;\nconst base = $env.GITLAB_API;\nconst pid = encodeURIComponent(ctx.repo);\nfor (let i = 0; i < 60; i++) {\n  const r = await this.helpers.httpRequest({\n    method: 'GET',\n    url: base + '/api/v4/projects/' + pid + '/pipelines?ref=' + encodeURIComponent(ref) + '&per_page=1',\n    headers: { 'PRIVATE-TOKEN': token },\n  });\n  const p = (r && r[0]) || null;\n  if (p && ['success', 'failed', 'canceled', 'skipped'].includes(p.status)) {\n    if (p.status !== 'success') {\n      throw new Error('CI ' + p.status + ' pipeline=' + p.id + ' ref=' + ref + ' — 按 constitution 处理失败分支');\n    }\n    return [{ json: { pipeline: 'success', pipeline_id: p.id, ref } }];\n  }\n  await new Promise(res => setTimeout(res, 20000));\n}\nthrow new Error('CI 20 分钟未到终态 ref=' + ref);"
+      }
+    },
+    {
+      "id": "nMrPoll",
+      "name": "门禁C · 轮询MR合并",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2560,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// 轮询 QA 报告 MR 直到被合并(门禁C: 人工在 GitLab 审查并点击合并)\nconst ctx = $('初始化上下文').first().json;\nconst token = $env.GITLAB_TOKEN;\nconst base = $env.GITLAB_API;\nconst pid = encodeURIComponent(ctx.repo);\nconst branch = 'task/' + ctx.slug;\nfor (let i = 0; i < 90; i++) {\n  const r = await this.helpers.httpRequest({\n    method: 'GET',\n    url: base + '/api/v4/projects/' + pid + '/merge_requests?source_branch=' + encodeURIComponent(branch) + '&per_page=1',\n    headers: { 'PRIVATE-TOKEN': token },\n  });\n  const mr = (r && r[0]) || null;\n  if (mr && mr.state === 'merged') {\n    return [{ json: { merged: true, mr_iid: mr.iid } }];\n  }\n  if (mr && mr.state === 'closed') {\n    throw new Error('MR 被关闭(门禁C 拒绝) branch=' + branch);\n  }\n  await new Promise(res => setTimeout(res, 20000));\n}\nthrow new Error('门禁C 30 分钟无合并决定 branch=' + branch);"
+      }
     }
   ],
   "connections": {
@@ -989,73 +927,22 @@
         ]
       ]
     },
-    "GitLab · 触发流水线": {
-      "main": [
-        [
-          {
-            "node": "CI 完成 · 全绿?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "CI 完成 · 全绿?": {
-      "main": [
-        [
-          {
-            "node": "流水线结果?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "流水线结果?": {
-      "main": [
-        [
-          {
-            "node": "QA · 对抗性审查",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "CI 失败 · 通知",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "QA · 对抗性审查": {
       "main": [
         [
           {
-            "node": "GitLab · QA 报告评论",
+            "node": "GitLab · QA 报告 MR",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "GitLab · QA 报告评论": {
+    "GitLab · QA 报告 MR": {
       "main": [
         [
           {
-            "node": "门禁C · MR 合并回调",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "门禁C · MR 合并回调": {
-      "main": [
-        [
-          {
-            "node": "Release · 发布材料",
+            "node": "门禁C · 轮询MR合并",
             "type": "main",
             "index": 0
           }
@@ -1132,7 +1019,7 @@
       "main": [
         [
           {
-            "node": "GitLab · 触发流水线",
+            "node": "CI · 触发流水线",
             "type": "main",
             "index": 0
           }
@@ -1151,6 +1038,39 @@
         [
           {
             "node": "OpenHands · 完成轮询",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CI · 轮询流水线": {
+      "main": [
+        [
+          {
+            "node": "QA · 对抗性审查",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "门禁C · 轮询MR合并": {
+      "main": [
+        [
+          {
+            "node": "Release · 发布材料",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CI · 触发流水线": {
+      "main": [
+        [
+          {
+            "node": "CI · 轮询流水线",
             "type": "main",
             "index": 0
           }
